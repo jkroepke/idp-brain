@@ -9,8 +9,10 @@ requires-python = ">=3.14,<3.15"
 dynamic = ["version"]
 dependencies = [
     "alembic>=1.18.5,<2",
+    "pydantic>=2.13.4,<3",
     "pydantic-settings>=2.14.2,<3",
     "psycopg>=3.3.4,<4",
+    "PyYAML>=6.0.3,<7",
     "rich>=15.0.0,<16",
     "sqlalchemy>=2.0.51,<3",
     "typer>=0.26.8,<1",
@@ -25,6 +27,7 @@ dev = [
     "pytest>=9.1.1,<10",
     "pytest-cov>=7.1.0,<8",
     "ruff>=0.15.20,<0.16",
+    "types-PyYAML>=6.0.12,<7",
 ]
 
 [tool.setuptools.packages.find]
