@@ -1,0 +1,84 @@
+min_version = "2024.9.5"
+
+[tools]
+python = { version = "3.12", virtualenv = ".venv" }
+uv = "0.11.26"
+
+[settings]
+python.uv_venv_auto = "create|source"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+[tasks.install]
+description = "Install project dependencies with uv"
+run = "uv sync"
+
+[tasks.lint]
+description = "Run the available Phase 1.2 local validation checks"
+run = "uv run python -m compileall src tests"
+
+[tasks.test]
+description = "Run the test suite"
+run = "uv run pytest"
+
+[tasks.ci]
+description = "Run local CI checks available after Phase 1.2"
+depends = ["lint", "test"]
+
+[tasks.up]
+description = "Start the local runtime"
+run = '''
+#!/usr/bin/env sh
+echo 'Task up is implemented in Phase 1.4.' >&2
+exit 1
+'''
+
+[tasks.down]
+description = "Stop the local runtime"
+run = '''
+#!/usr/bin/env sh
+echo 'Task down is implemented in Phase 1.4.' >&2
+exit 1
+'''
+
+[tasks."db:migrate"]
+description = "Apply database migrations"
+run = '''
+#!/usr/bin/env sh
+echo 'Task db:migrate is implemented in Phase 1.6.' >&2
+exit 1
+'''
+
+[tasks."db:reset"]
+description = "Reset the local database"
+run = '''
+#!/usr/bin/env sh
+echo 'Task db:reset is implemented in Phase 1.6 or later.' >&2
+exit 1
+'''
+
+[tasks.ingest]
+description = "Run ingestion"
+run = '''
+#!/usr/bin/env sh
+echo 'Task ingest is implemented in Phase 3.' >&2
+exit 1
+'''
+
+[tasks.retrieve]
+description = "Run retrieval"
+raw_args = true
+run = '''
+#!/usr/bin/env sh
+echo 'Task retrieve is implemented in Phase 5.' >&2
+exit 1
+'''
+
+[tasks.eval]
+description = "Run retrieval evaluation"
+run = '''
+#!/usr/bin/env sh
+echo 'Task eval is implemented in Phase 5.' >&2
+exit 1
+'''
