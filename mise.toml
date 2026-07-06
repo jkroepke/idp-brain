@@ -15,16 +15,23 @@ description = "Install project dependencies with uv"
 run = "uv sync"
 
 [tasks.lint]
-description = "Run the available Phase 1.2 local validation checks"
-run = "uv run python -m compileall src tests"
+description = "Run formatting, linting, and type checks"
+run = '''
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy src/idp_brain
+'''
 
 [tasks.test]
 description = "Run the test suite"
 run = "uv run pytest"
 
 [tasks.ci]
-description = "Run local CI checks available after Phase 1.2"
-depends = ["lint", "test"]
+description = "Run linting and tests"
+run = '''
+mise run lint
+mise run test
+'''
 
 [tasks.up]
 description = "Start the local runtime"
