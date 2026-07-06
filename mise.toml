@@ -35,19 +35,11 @@ mise run test
 
 [tasks.up]
 description = "Start the local runtime"
-run = '''
-#!/usr/bin/env sh
-echo 'Task up is implemented in Phase 1.4.' >&2
-exit 1
-'''
+run = "docker compose up -d --build postgres"
 
 [tasks.down]
 description = "Stop the local runtime"
-run = '''
-#!/usr/bin/env sh
-echo 'Task down is implemented in Phase 1.4.' >&2
-exit 1
-'''
+run = "docker compose down"
 
 [tasks."db:migrate"]
 description = "Apply database migrations"
