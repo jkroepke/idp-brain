@@ -8,8 +8,11 @@ description = "Local-first source-backed retrieval pipeline scaffold."
 requires-python = ">=3.12,<3.13"
 dynamic = ["version"]
 dependencies = [
+    "alembic",
     "pydantic-settings",
+    "psycopg>=3,<4",
     "rich",
+    "sqlalchemy>=2,<3",
     "typer",
 ]
 
@@ -52,4 +55,7 @@ testpaths = ["tests"]
 addopts = [
     "--cov=idp_brain",
     "--cov-report=term-missing",
+]
+markers = [
+    "integration: tests that require external local services such as PostgreSQL",
 ]
