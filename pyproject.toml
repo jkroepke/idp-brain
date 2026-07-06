@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "idp-brain"
+description = "Local-first source-backed retrieval pipeline scaffold."
+requires-python = ">=3.12,<3.13"
+dynamic = ["version"]
+dependencies = [
+    "rich",
+    "typer",
+]
+
+[project.scripts]
+idp-brain = "idp_brain.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "idp_brain.__version__"}
