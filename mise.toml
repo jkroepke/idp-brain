@@ -27,10 +27,11 @@ description = "Run the test suite"
 run = "uv run pytest -m 'not integration'"
 
 [tasks.ci]
-description = "Run linting and tests"
+description = "Run linting, unit tests, and database-backed integration tests"
 run = '''
 mise run lint
 mise run test
+mise run test:integration
 '''
 
 [tasks.up]
