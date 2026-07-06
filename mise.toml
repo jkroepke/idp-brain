@@ -27,16 +27,43 @@ description = "Run the test suite"
 run = "uv run pytest -m 'not integration'"
 
 [tasks.ci]
-description = "Run linting, unit tests, and database-backed integration tests"
+description = "Run the complete local validation path"
 run = '''
+#!/usr/bin/env sh
+set -eu
+
+postgres_started=0
+
+cleanup() {
+  status=$?
+  trap - EXIT INT TERM
+  set +e
+
+  if [ "$postgres_started" -eq 1 ]; then
+    mise run down
+    down_status=$?
+    if [ "$status" -eq 0 ]; then
+      exit "$down_status"
+    fi
+  fi
+
+  exit "$status"
+}
+
+trap cleanup EXIT INT TERM
+
+mise run install
 mise run lint
 mise run test
+postgres_started=1
+mise run up
+mise run db:migrate
 mise run test:integration
 '''
 
 [tasks.up]
 description = "Start the local runtime"
-run = "docker compose up -d --build postgres"
+run = "docker compose up --build --wait --wait-timeout 120 postgres"
 
 [tasks.down]
 description = "Stop the local runtime"
