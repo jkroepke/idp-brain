@@ -1,19 +1,19 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=83,<84", "wheel>=0.47,<0.48"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "idp-brain"
 description = "Local-first source-backed retrieval pipeline scaffold."
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14,<3.15"
 dynamic = ["version"]
 dependencies = [
-    "alembic",
-    "pydantic-settings",
-    "psycopg>=3,<4",
-    "rich",
-    "sqlalchemy>=2,<3",
-    "typer",
+    "alembic>=1.18.5,<2",
+    "pydantic-settings>=2.14.2,<3",
+    "psycopg>=3.3.4,<4",
+    "rich>=15.0.0,<16",
+    "sqlalchemy>=2.0.51,<3",
+    "typer>=0.26.8,<1",
 ]
 
 [project.scripts]
@@ -21,10 +21,10 @@ idp-brain = "idp_brain.cli:app"
 
 [dependency-groups]
 dev = [
-    "mypy",
-    "pytest",
-    "pytest-cov",
-    "ruff",
+    "mypy>=2.1.0,<3",
+    "pytest>=9.1.1,<10",
+    "pytest-cov>=7.1.0,<8",
+    "ruff>=0.15.20,<0.16",
 ]
 
 [tool.setuptools.packages.find]
@@ -34,7 +34,7 @@ where = ["src"]
 version = {attr = "idp_brain.__version__"}
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 src = ["src", "tests"]
 line-length = 88
 
@@ -42,7 +42,7 @@ line-length = 88
 select = ["E", "F", "I", "UP"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 files = ["src/idp_brain"]
 disallow_untyped_defs = true
 warn_unused_ignores = true

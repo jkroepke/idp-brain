@@ -13,7 +13,7 @@ Add `mise` as the documented workflow entry point so contributors can install de
 - `README.md` if a short local development section does not already exist
 
 ## Implementation Instructions
-1. Create `mise.toml` with Python 3.12 pinned for the project.
+1. Create `mise.toml` with Python 3.14 pinned for the project.
 2. Add exactly these required task names from `ARCHITECTURE.md`: `install`, `up`, `down`, `db:migrate`, `db:reset`, `ingest`, `retrieve`, `eval`, `lint`, `test`, and `ci`.
 3. Wire implemented tasks in this step as follows:
    - `install`: `uv sync`

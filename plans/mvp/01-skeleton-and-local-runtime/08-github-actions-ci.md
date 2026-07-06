@@ -16,7 +16,7 @@ Add the initial GitHub Actions workflow that runs linting, type checking, tests,
 ## Implementation Instructions
 1. Create `.github/workflows/ci.yaml`.
 2. Trigger on pull requests and pushes to the default branch.
-3. Use one Linux job with repository checkout, Python 3.12 through `mise`, dependency installation through `mise run install`, and the same Docker Compose PostgreSQL runtime used locally.
+3. Use one Linux job with repository checkout, Python 3.14 through `mise`, dependency installation through `mise run install`, and the same Docker Compose PostgreSQL runtime used locally.
 4. Configure CI environment variables explicitly:
    - `IDP_BRAIN_EXTERNAL_MODEL_CALLS_ENABLED=false`
    - `IDP_BRAIN_EMBEDDING_PROVIDER=mock`

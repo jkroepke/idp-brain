@@ -21,8 +21,8 @@ read-only local tool protocol that agents can call.
 ## MVP Goal And Boundaries
 
 Build the first useful `idp-brain` milestone described in `ARCHITECTURE.md`: a
-local-first Python 3.12 RAG pipeline that ingests configured sources, persists
-only sanitized evidence, indexes it with PostgreSQL 17, ParadeDB `pg_search`,
+local-first Python 3.14 RAG pipeline that ingests configured sources, persists
+only sanitized evidence, indexes it with PostgreSQL 18, ParadeDB `pg_search`,
 and pgvector, and exposes ACL-safe retrieval through CLI and read-only MCP
 tools.
 
@@ -201,12 +201,12 @@ filters.
 The early phase steps create and verify most of this tooling. Before
 implementing later steps, expect these local prerequisites to exist:
 
-- Python 3.12.
+- Python 3.14.
 - `uv` for dependency and lockfile management.
 - `mise` for project tasks, tool versions, and common workflows.
 - `git` for repository source acquisition and normal commits.
 - `docker compose` for local PostgreSQL.
-- PostgreSQL 17 with the `vector`, `pg_search`, and `pg_trgm` extensions.
+- PostgreSQL 18 with the `vector`, `pg_search`, and `pg_trgm` extensions.
 - The repository's configured `mise` tasks for install, lint, type check, tests,
   database migration, and CI-equivalent checks.
 

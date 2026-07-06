@@ -9,7 +9,7 @@ CLI shell, and project task wiring.
 Use `mise` as the project command surface. Runtime dependencies are tracked in
 `mise.toml`:
 
-- Python `3.12`
+- Python `3.14.6`
 - `uv` for Python dependency and lockfile management
 
 Install the tracked tools and project dependencies:
@@ -27,13 +27,19 @@ mise run test
 mise run ci
 ```
 
-The following task names are reserved now and intentionally fail until their
-own MVP steps implement them:
+Run the local PostgreSQL runtime and migrations when working on database-backed
+steps:
 
 ```text
 mise run up
 mise run down
 mise run db:migrate
+```
+
+The following task names are reserved now and intentionally fail until their
+own MVP steps implement them:
+
+```text
 mise run db:reset
 mise run ingest
 mise run retrieve -- <query>

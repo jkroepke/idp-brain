@@ -16,9 +16,9 @@ Install and configure baseline validation tools so Python formatting checks, lin
 
 ## Implementation Instructions
 1. Add development dependencies for `ruff`, `mypy`, and `pytest-cov`; keep the `pytest` dependency introduced in Phase 1.1.
-2. Configure Ruff in `pyproject.toml` for Python 3.12 and the `src` plus `tests` paths.
+2. Configure Ruff in `pyproject.toml` for Python 3.14 and the `src` plus `tests` paths.
 3. Configure mypy in `pyproject.toml` to type check `src/idp_brain` with deterministic, project-appropriate strictness:
-   - `python_version = "3.12"`
+   - `python_version = "3.14"`
    - disallow untyped definitions
    - warn on unused ignores
    - warn on redundant casts

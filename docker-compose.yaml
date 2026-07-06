@@ -1,12 +1,12 @@
 # Local-only runtime for idp-brain development.
 #
 # ParadeDB publishes PostgreSQL-version-specific images that include pg_search.
-# This MVP uses a pinned PostgreSQL 17 tag instead of pgvector/pgvector:pg17 so
+# This MVP uses a pinned PostgreSQL 18 tag instead of pgvector/pgvector:pg18 so
 # the local image path is explicitly intended to provide ParadeDB pg_search.
 # Extension creation remains migration-managed in Phase 1.6.
 services:
   postgres:
-    image: paradedb/paradedb:0.24.1-pg17
+    image: paradedb/paradedb:v0.24.1-pg18
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-idp_brain}
       POSTGRES_USER: ${POSTGRES_USER:-idp_brain}
@@ -14,7 +14,7 @@ services:
     ports:
       - "127.0.0.1:${IDP_BRAIN_POSTGRES_PORT:-55432}:5432"
     volumes:
-      - idp_brain_postgres_data:/var/lib/postgresql/data
+      - idp_brain_postgres18_cluster:/var/lib/postgresql
     healthcheck:
       test:
         [
@@ -27,7 +27,7 @@ services:
       start_period: 10s
 
 volumes:
-  idp_brain_postgres_data:
+  idp_brain_postgres18_cluster:
     labels:
       idp-brain.scope: "local-development"
       idp-brain.disposable: "true"

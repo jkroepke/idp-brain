@@ -54,7 +54,7 @@ All normal workflows must be exposed as `mise` tasks. Contributors should not ne
 
 ### Runtime Language
 
-- Python 3.12.
+- Python 3.14.
 
 Python owns:
 
@@ -72,7 +72,7 @@ Python owns:
 
 ### RAG Framework
 
-- LlamaIndex Python, pinned initially to `0.14.23`.
+- LlamaIndex Python, pinned through `uv.lock` when introduced.
 
 LlamaIndex is used for ingestion and retrieval primitives. The source-trust policy, metadata model, ranking rules, and citation contract remain application-owned.
 
@@ -149,14 +149,14 @@ Model serving is outside MCP. Self-hosted embedding, reranking, or generation en
 
 ### Database
 
-- PostgreSQL 17 with pgvector and ParadeDB `pg_search`.
+- PostgreSQL 18 with pgvector and ParadeDB `pg_search`.
 - Local Docker image: approved PostgreSQL-compatible image that includes pgvector and `pg_search`, or a repository-owned custom image that installs both.
 - Required extensions:
   - `vector`
   - `pg_search`
   - `pg_trgm`
 
-Do not assume the stock `pgvector/pgvector:pg17` image contains ParadeDB `pg_search`. The repository must provide or reference a Docker build and CI check that verifies required extensions with `CREATE EXTENSION`.
+Do not assume the stock `pgvector/pgvector:pg18` image contains ParadeDB `pg_search`. The repository must provide or reference a Docker build and CI check that verifies required extensions with `CREATE EXTENSION`.
 
 Minimum extension smoke test:
 
@@ -1088,7 +1088,7 @@ The review findings are resolved as architecture constraints:
 | Finding | Architecture response |
 | --- | --- |
 | Keep the first milestone narrow. | The first useful milestone is sanitized ingestion, citations, ACL-safe exact/BM25/vector retrieval, MCP `search` and `fetch`, and retrieval fixtures. Memory, fine-tuning, ACE, advanced workflows, and answer generation are later or optional. |
-| Make ParadeDB `pg_search` + pgvector the target retrieval store. | PostgreSQL 17 with `pg_search`, pgvector, and `pg_trgm` is the named target. BM25 and vector indexes are migration-managed derived indexes over relational records. Extension, BM25, and HNSW smoke tests are required locally and in CI. |
+| Make ParadeDB `pg_search` + pgvector the target retrieval store. | PostgreSQL 18 with `pg_search`, pgvector, and `pg_trgm` is the named target. BM25 and vector indexes are migration-managed derived indexes over relational records. Extension, BM25, and HNSW smoke tests are required locally and in CI. |
 | Verify custom image and extension compatibility. | The local runtime must use an approved or repository-owned image that can create `vector`, `pg_search`, and `pg_trgm`, then create fixture BM25 and HNSW indexes before the service is considered healthy. |
 | Enforce ACL, source allowlist, and sensitivity filters before every query. | Retrieval stages apply trusted access, source, sensitivity, license, and version filters before exact lookup, BM25, vector search, relationship traversal, memory lookup, diagnostics, and MCP `fetch`. |
 | Do not trust caller-provided MCP context. | MCP `caller_context_hint` is only a hint. Access context is derived from trusted local configuration, session identity, or operator policy. |

@@ -1,7 +1,7 @@
 # 1.4: Docker Compose Postgres
 
 ## Goal
-Add a disposable local PostgreSQL 17 runtime for pgvector, ParadeDB `pg_search`, and `pg_trgm`, without assuming the stock `pgvector/pgvector:pg17` image contains ParadeDB.
+Add a disposable local PostgreSQL 18 runtime for pgvector, ParadeDB `pg_search`, and `pg_trgm`, without assuming the stock `pgvector/pgvector:pg18` image contains ParadeDB.
 
 ## Prerequisites
 - Phase 1.1 through Phase 1.3 are complete.
@@ -17,10 +17,10 @@ Add a disposable local PostgreSQL 17 runtime for pgvector, ParadeDB `pg_search`,
 
 ## Implementation Instructions
 1. Add a `postgres` service in `docker-compose.yaml`.
-2. Use PostgreSQL 17 with pgvector, ParadeDB `pg_search`, and `pg_trgm` available through one explicit approach:
+2. Use PostgreSQL 18 with pgvector, ParadeDB `pg_search`, and `pg_trgm` available through one explicit approach:
    - an approved PostgreSQL-compatible image reference pinned to a tag or digest and documented in the compose file, or
-   - a repository-owned `docker/postgres/Dockerfile` that installs PostgreSQL 17, pgvector, ParadeDB `pg_search`, and PostgreSQL contrib modules for `pg_trgm`.
-3. Do not use `pgvector/pgvector:pg17` by itself unless the step also proves and documents that `pg_search` is present.
+   - a repository-owned `docker/postgres/Dockerfile` that installs PostgreSQL 18, pgvector, ParadeDB `pg_search`, and PostgreSQL contrib modules for `pg_trgm`.
+3. Do not use `pgvector/pgvector:pg18` by itself unless the step also proves and documents that `pg_search` is present.
 4. Configure safe disposable development defaults:
    - database: `idp_brain`
    - user: `idp_brain`
