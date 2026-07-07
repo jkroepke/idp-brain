@@ -1,0 +1,22 @@
+---
+fixture_id: code_qa_smoke
+query_profile: code_qa
+query: "How does the local config loader read YAML?"
+principal:
+  id: local-developer
+  groups:
+    - developers
+filters:
+  source_ids:
+    - local-source-tree
+  visibility_labels:
+    - internal
+  sensitivity_classes:
+    - internal
+  license_policies:
+    - review_required
+expected_result_ids:
+  - local-source-tree:src/idp_brain/config/loader.py
+expected_citations:
+  - source_id: local-source-tree
+    path: src/idp_brain/config/loader.py

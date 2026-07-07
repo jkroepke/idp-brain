@@ -1,0 +1,172 @@
+---
+config_version: 1
+kind: retrieval
+query_profiles:
+  - profile_id: docs_qa
+    exact_fields:
+      - source_id
+      - version_label
+      - artifact_path
+      - heading_path
+      - citation_id
+    bm25_fields:
+      - sanitized_text
+      - heading_path
+      - artifact_path
+      - version_label
+      - source_type
+    vector_index: docs_chunks_hnsw
+    embedding_model: local-ci-embedding
+    candidate_counts:
+      exact_top_k: 10
+      bm25_top_k: 40
+      vector_top_k: 40
+      fused_top_k: 40
+      rerank_top_k: 12
+    fusion_method: reciprocal_rank_fusion
+    reranker: local-ci-reranker
+    freshness_weighting:
+      enabled: true
+      weight: 0.25
+      strategy: release_or_snapshot_decay
+    authority_weighting:
+      enabled: true
+      weight: 0.75
+      strategy: source_priority
+    token_budget: 1600
+
+  - profile_id: code_qa
+    exact_fields:
+      - source_id
+      - version_label
+      - artifact_path
+      - language
+      - symbol_path
+      - signature_text
+    bm25_fields:
+      - sanitized_text
+      - symbol_path
+      - signature_text
+      - artifact_path
+      - language
+    vector_index: code_chunks_hnsw
+    embedding_model: local-ci-code-embedding
+    candidate_counts:
+      exact_top_k: 20
+      bm25_top_k: 60
+      vector_top_k: 40
+      fused_top_k: 50
+      rerank_top_k: 15
+    fusion_method: reciprocal_rank_fusion
+    reranker: local-ci-reranker
+    freshness_weighting:
+      enabled: true
+      weight: 0.35
+      strategy: commit_or_snapshot_decay
+    authority_weighting:
+      enabled: true
+      weight: 0.85
+      strategy: source_priority
+    token_budget: 1800
+
+  - profile_id: api_symbol_lookup
+    exact_fields:
+      - source_id
+      - version_label
+      - artifact_path
+      - symbol_path
+      - schema_path
+      - endpoint_path
+      - signature_text
+    bm25_fields:
+      - symbol_path
+      - schema_path
+      - endpoint_path
+      - signature_text
+      - sanitized_text
+    vector_index: api_specs_hnsw
+    embedding_model: local-ci-code-embedding
+    candidate_counts:
+      exact_top_k: 30
+      bm25_top_k: 30
+      vector_top_k: 20
+      fused_top_k: 30
+      rerank_top_k: 10
+    fusion_method: reciprocal_rank_fusion
+    reranker: local-ci-reranker
+    freshness_weighting:
+      enabled: true
+      weight: 0.3
+      strategy: version_label_precedence
+    authority_weighting:
+      enabled: true
+      weight: 1.0
+      strategy: formal_api_before_docs
+    token_budget: 1200
+
+  - profile_id: release_change_search
+    exact_fields:
+      - source_id
+      - version_label
+      - tracked_ref
+      - release_tag
+      - commit_sha
+      - artifact_path
+    bm25_fields:
+      - sanitized_text
+      - heading_path
+      - artifact_path
+      - version_label
+      - change_summary
+    vector_index: release_notes_hnsw
+    embedding_model: local-ci-embedding
+    candidate_counts:
+      exact_top_k: 15
+      bm25_top_k: 50
+      vector_top_k: 30
+      fused_top_k: 40
+      rerank_top_k: 12
+    fusion_method: reciprocal_rank_fusion
+    reranker: local-ci-reranker
+    freshness_weighting:
+      enabled: true
+      weight: 0.6
+      strategy: newest_relevant_version
+    authority_weighting:
+      enabled: true
+      weight: 0.7
+      strategy: release_notes_then_code
+    token_budget: 1800
+
+  - profile_id: conflict_search
+    exact_fields:
+      - source_id
+      - claim_subject
+      - claim_predicate
+      - version_label
+      - citation_id
+    bm25_fields:
+      - sanitized_text
+      - claim_subject
+      - claim_predicate
+      - artifact_path
+      - version_label
+    vector_index: conflict_claims_hnsw
+    embedding_model: local-ci-embedding
+    candidate_counts:
+      exact_top_k: 20
+      bm25_top_k: 40
+      vector_top_k: 40
+      fused_top_k: 50
+      rerank_top_k: 20
+    fusion_method: reciprocal_rank_fusion
+    reranker: local-ci-reranker
+    freshness_weighting:
+      enabled: true
+      weight: 0.2
+      strategy: keep_competing_versions
+    authority_weighting:
+      enabled: true
+      weight: 1.0
+      strategy: compare_source_priority
+    token_budget: 2200

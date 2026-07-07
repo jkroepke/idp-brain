@@ -1,0 +1,49 @@
+---
+config_version: 1
+kind: security
+source_allowlist:
+  mode: explicit
+  source_ids:
+    - local-docs
+    - local-source-tree
+    - local-config-examples
+redaction_rules:
+  - rule_id: secret-like-values
+    marker: "[REDACTED_SECRET]"
+    detector: regex
+    enabled: true
+    severity: high
+    pattern: '(?i)(token|secret|password)\s*[:=]\s*\S+'
+  - rule_id: bearer-tokens
+    marker: "[REDACTED_TOKEN]"
+    detector: regex
+    enabled: true
+    severity: high
+    pattern: '(?i)bearer\s+[A-Za-z0-9._-]+'
+  - rule_id: private-key-blocks
+    marker: "[REDACTED_PRIVATE_KEY]"
+    detector: regex
+    enabled: true
+    severity: critical
+    pattern: '-----BEGIN [A-Z ]+ PRIVATE KEY-----'
+  - rule_id: connection-strings
+    marker: "[REDACTED_CONNECTION]"
+    detector: regex
+    enabled: true
+    severity: high
+    pattern: '(?i)(postgres|mysql|mongodb)://\S+'
+pii_profiles:
+  - profile_id: basic-pii-placeholder
+    enabled: false
+    detectors:
+      - email
+      - phone
+      - person_name
+  - profile_id: presidio-placeholder
+    enabled: false
+    detectors:
+      - presidio
+prompt_injection:
+  enabled: true
+  action: quarantine
+  source_text_is_instruction: false

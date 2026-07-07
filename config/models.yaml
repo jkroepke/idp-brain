@@ -1,0 +1,211 @@
+---
+config_version: 1
+kind: models
+embedding_profiles:
+  - model_id: local-ci-embedding
+    provider: mock
+    provider_model_id: deterministic-hash-embedding-v1
+    enabled: true
+    external: false
+    deterministic: true
+    dimensions: 32
+    token_limit: 512
+    options:
+      seed: 17
+      normalize: true
+
+  - model_id: local-ci-code-embedding
+    provider: mock
+    provider_model_id: deterministic-hash-code-embedding-v1
+    enabled: true
+    external: false
+    deterministic: true
+    dimensions: 32
+    token_limit: 768
+    options:
+      seed: 23
+      normalize: true
+
+  - model_id: disabled-openai-embedding
+    provider: openai
+    provider_model_id: text-embedding-3-small
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: 1536
+    token_limit: 8191
+    options:
+      requires_api_key: true
+
+  - model_id: disabled-jina-embedding
+    provider: jina
+    provider_model_id: jina-embeddings-v3
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: 1024
+    token_limit: 8192
+    options:
+      requires_api_key: true
+
+  - model_id: disabled-baai-embedding
+    provider: baai
+    provider_model_id: bge-m3
+    enabled: false
+    external: false
+    deterministic: false
+    dimensions: 1024
+    token_limit: 8192
+    options:
+      requires_local_model_files: true
+
+  - model_id: disabled-vllm-embedding
+    provider: vllm
+    provider_model_id: example/embedding-model
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: 1024
+    token_limit: 8192
+    options:
+      remote_serving_disabled: true
+
+reranker_profiles:
+  - model_id: local-ci-reranker
+    provider: mock
+    provider_model_id: deterministic-score-reranker-v1
+    enabled: true
+    external: false
+    deterministic: true
+    dimensions: null
+    token_limit: 512
+    options:
+      stable_sort: true
+      seed: 31
+
+  - model_id: disabled-cohere-reranker
+    provider: cohere
+    provider_model_id: rerank-v3.5
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: null
+    token_limit: 4096
+    options:
+      requires_api_key: true
+
+  - model_id: disabled-jina-reranker
+    provider: jina
+    provider_model_id: jina-reranker-v2-base-multilingual
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: null
+    token_limit: 4096
+    options:
+      requires_api_key: true
+
+  - model_id: disabled-baai-reranker
+    provider: baai
+    provider_model_id: bge-reranker-v2-m3
+    enabled: false
+    external: false
+    deterministic: false
+    dimensions: null
+    token_limit: 4096
+    options:
+      requires_local_model_files: true
+
+  - model_id: disabled-bentoml-reranker
+    provider: bentoml
+    provider_model_id: example-reranker-service
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: null
+    token_limit: 4096
+    options:
+      remote_serving_disabled: true
+
+generator_profiles:
+  - model_id: disabled-openai-generator
+    provider: openai
+    provider_model_id: gpt-4.1-mini
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: null
+    token_limit: 8192
+    options:
+      requires_api_key: true
+
+  - model_id: disabled-litellm-generator
+    provider: litellm
+    provider_model_id: example-router-model
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: null
+    token_limit: 8192
+    options:
+      remote_serving_disabled: true
+
+  - model_id: disabled-vllm-generator
+    provider: vllm
+    provider_model_id: example/generator-model
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: null
+    token_limit: 8192
+    options:
+      remote_serving_disabled: true
+
+  - model_id: disabled-bentoml-generator
+    provider: bentoml
+    provider_model_id: example-generator-service
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: null
+    token_limit: 8192
+    options:
+      remote_serving_disabled: true
+
+  - model_id: disabled-kserve-generator
+    provider: kserve
+    provider_model_id: example-generator-inference-service
+    enabled: false
+    external: true
+    deterministic: false
+    dimensions: null
+    token_limit: 8192
+    options:
+      remote_serving_disabled: true
+
+provider_routes:
+  - route_id: default-docs-embedding
+    purpose: embedding
+    primary_model: local-ci-embedding
+    fallback_models:
+      - local-ci-code-embedding
+    enabled: true
+
+  - route_id: default-code-embedding
+    purpose: embedding
+    primary_model: local-ci-code-embedding
+    fallback_models:
+      - local-ci-embedding
+    enabled: true
+
+  - route_id: default-reranker
+    purpose: reranker
+    primary_model: local-ci-reranker
+    fallback_models: []
+    enabled: true
+
+budgets:
+  max_embedding_tokens_per_item: 512
+  max_rerank_candidates: 50
+  max_generator_context_tokens: 0
+  max_external_requests_per_run: 0

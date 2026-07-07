@@ -1,0 +1,170 @@
+---
+config_version: 1
+kind: sources
+sources:
+  - source_id: local-docs
+    source_type: documentation_file
+    local_path: README.md
+    tracked_refs:
+      - local-snapshot
+    version_strategy: explicit_refs
+    include_paths:
+      - README.md
+    exclude_paths:
+      - "**/.git/**"
+      - "**/__pycache__/**"
+    extractor_profile: docs_markdown_html
+    source_priority: 50
+    visibility_label: public
+    allowed_groups:
+      - developers
+      - ci
+    allowed_principals:
+      - service:ci
+    sensitivity_class: public
+    license_policy: allowed
+    refresh_cadence: manual
+    enabled: true
+
+  - source_id: local-source-tree
+    source_type: local_directory
+    local_path: src/idp_brain
+    tracked_refs:
+      - local-snapshot
+    version_strategy: snapshot
+    include_paths:
+      - "**/*.py"
+    exclude_paths:
+      - "**/__pycache__/**"
+      - "**/*.pyc"
+    extractor_profile: source_code
+    source_priority: 80
+    visibility_label: internal
+    allowed_groups:
+      - developers
+      - ci
+    allowed_principals:
+      - service:ci
+    sensitivity_class: internal
+    license_policy: review_required
+    refresh_cadence: manual
+    enabled: true
+
+  - source_id: local-config-examples
+    source_type: local_directory
+    local_path: config
+    tracked_refs:
+      - local-snapshot
+    version_strategy: snapshot
+    include_paths:
+      - "**/*.yaml"
+    exclude_paths:
+      - "**/*secret*"
+      - "**/*token*"
+    extractor_profile: structured_config
+    source_priority: 60
+    visibility_label: internal
+    allowed_groups:
+      - developers
+      - ci
+    allowed_principals:
+      - service:ci
+    sensitivity_class: internal
+    license_policy: allowed
+    refresh_cadence: manual
+    enabled: true
+
+  - source_id: local-openapi-example
+    source_type: openapi_spec
+    local_path: examples/openapi.yaml
+    tracked_refs:
+      - example-v1
+    version_strategy: explicit_refs
+    include_paths:
+      - openapi.yaml
+      - openapi/**/*.yaml
+    exclude_paths:
+      - "**/*private*"
+    extractor_profile: openapi_specs
+    source_priority: 70
+    visibility_label: internal
+    allowed_groups:
+      - developers
+    allowed_principals: []
+    sensitivity_class: internal
+    license_policy: review_required
+    refresh_cadence: manual
+    enabled: false
+
+  - source_id: local-schema-example
+    source_type: schema_bundle
+    local_path: examples/schemas
+    tracked_refs:
+      - example-v1
+    version_strategy: explicit_refs
+    include_paths:
+      - "**/*.json"
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.toml"
+    exclude_paths:
+      - "**/*private*"
+    extractor_profile: structured_config
+    source_priority: 65
+    visibility_label: internal
+    allowed_groups:
+      - developers
+    allowed_principals: []
+    sensitivity_class: internal
+    license_policy: review_required
+    refresh_cadence: manual
+    enabled: false
+
+  - source_id: local-rich-docs-example
+    source_type: local_directory
+    local_path: examples/rich-documents
+    tracked_refs:
+      - example-v1
+    version_strategy: explicit_refs
+    include_paths:
+      - "**/*.pdf"
+      - "**/*.docx"
+      - "**/*.odt"
+    exclude_paths:
+      - "**/*private*"
+      - "**/*confidential*"
+    extractor_profile: rich_documents
+    source_priority: 30
+    visibility_label: restricted
+    allowed_groups:
+      - docs-admins
+    allowed_principals: []
+    sensitivity_class: confidential
+    license_policy: restricted
+    refresh_cadence: manual
+    enabled: false
+
+  - source_id: local-repository-digest-example
+    source_type: git_repository_digest
+    local_path: .
+    tracked_refs:
+      - local-snapshot
+    version_strategy: snapshot
+    include_paths:
+      - README.md
+      - src/**
+      - tests/**
+    exclude_paths:
+      - .git/**
+      - .venv/**
+      - "**/__pycache__/**"
+    extractor_profile: repository_digest_fallback
+    source_priority: 10
+    visibility_label: internal
+    allowed_groups:
+      - developers
+    allowed_principals: []
+    sensitivity_class: internal
+    license_policy: review_required
+    refresh_cadence: manual
+    enabled: false

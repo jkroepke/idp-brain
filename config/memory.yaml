@@ -1,0 +1,82 @@
+---
+config_version: 1
+kind: memory
+scopes:
+  - scope: session
+    enabled: true
+    visibility_label: public
+    sensitivity_class: public
+    retention_policy: short_session
+  - scope: project
+    enabled: true
+    visibility_label: internal
+    sensitivity_class: internal
+    retention_policy: project_default
+  - scope: user
+    enabled: false
+    visibility_label: restricted
+    sensitivity_class: confidential
+    retention_policy: user_default
+  - scope: system
+    enabled: true
+    visibility_label: internal
+    sensitivity_class: internal
+    retention_policy: system_default
+retention_policies:
+  - policy_id: short_session
+    ttl_days: 7
+    max_items: 100
+    redact_before_storage: true
+  - policy_id: project_default
+    ttl_days: 180
+    max_items: 500
+    redact_before_storage: true
+  - policy_id: user_default
+    ttl_days: 90
+    max_items: 200
+    redact_before_storage: true
+  - policy_id: system_default
+    ttl_days: null
+    max_items: 1000
+    redact_before_storage: true
+promotion_rules:
+  - rule_id: promote-preference
+    memory_type: preference
+    requires_operator_approval: true
+    required_citations: false
+    min_confidence: 0.9
+  - rule_id: promote-decision
+    memory_type: decision
+    requires_operator_approval: true
+    required_citations: true
+    min_confidence: 0.9
+  - rule_id: promote-correction
+    memory_type: correction
+    requires_operator_approval: true
+    required_citations: true
+    min_confidence: 0.85
+  - rule_id: promote-retrieval-feedback
+    memory_type: retrieval_feedback
+    requires_operator_approval: true
+    required_citations: true
+    min_confidence: 0.8
+  - rule_id: promote-evaluation-observation
+    memory_type: evaluation_observation
+    requires_operator_approval: true
+    required_citations: true
+    min_confidence: 0.8
+  - rule_id: promote-source-policy
+    memory_type: source_policy
+    requires_operator_approval: true
+    required_citations: true
+    min_confidence: 0.95
+  - rule_id: promote-workflow-note
+    memory_type: workflow_note
+    requires_operator_approval: true
+    required_citations: false
+    min_confidence: 0.9
+retrieval_influence:
+  enabled: false
+  allowed_scopes: []
+  max_boost: 0
+  token_budget: 0

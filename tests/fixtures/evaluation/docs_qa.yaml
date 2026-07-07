@@ -1,0 +1,22 @@
+---
+fixture_id: docs_qa_smoke
+query_profile: docs_qa
+query: "What is the local-first purpose of this project?"
+principal:
+  id: local-developer
+  groups:
+    - developers
+filters:
+  source_ids:
+    - local-docs
+  visibility_labels:
+    - public
+  sensitivity_classes:
+    - public
+  license_policies:
+    - allowed
+expected_result_ids:
+  - local-docs:README.md
+expected_citations:
+  - source_id: local-docs
+    path: README.md

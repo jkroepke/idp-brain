@@ -1,0 +1,264 @@
+---
+config_version: 1
+kind: extractors
+profiles:
+  - profile_id: docs_markdown_html
+    family: docs
+    enabled: true
+    file_patterns:
+      - "*.md"
+      - "*.mdx"
+      - "*.html"
+      - "*.htm"
+    include_generated: false
+    include_vendored: false
+    tools:
+      - tool_id: builtin-markdown-html
+        enabled: true
+        command: []
+        options:
+          preserve_headings: true
+          preserve_code_blocks: true
+      - tool_id: docling
+        enabled: false
+        command:
+          - docling
+        options:
+          optional_dependency: true
+      - tool_id: apache-tika
+        enabled: false
+        command:
+          - tika
+        options:
+          optional_dependency: true
+      - tool_id: unstructured
+        enabled: false
+        command:
+          - unstructured-ingest
+        options:
+          optional_dependency: true
+    validator_commands: []
+    fallback_profile: repository_digest_fallback
+
+  - profile_id: source_code
+    family: code
+    enabled: true
+    file_patterns:
+      - "*.py"
+      - "*.go"
+      - "*.js"
+      - "*.ts"
+      - "*.java"
+      - "*.rs"
+      - "*.sh"
+    include_generated: false
+    include_vendored: false
+    tools:
+      - tool_id: builtin-source-code-splitter
+        enabled: true
+        command: []
+        options:
+          preserve_symbols: true
+          preserve_imports: true
+      - tool_id: tree-sitter
+        enabled: false
+        command:
+          - tree-sitter
+        options:
+          optional_dependency: true
+      - tool_id: semgrep
+        enabled: false
+        command:
+          - semgrep
+        options:
+          optional_dependency: true
+    validator_commands:
+      - command_id: go-list
+        command:
+          - go
+          - list
+          - ./...
+        enabled: false
+        timeout_seconds: 60
+      - command_id: go-test-list
+        command:
+          - go
+          - test
+          - -list
+          - .
+          - ./...
+        enabled: false
+        timeout_seconds: 60
+    fallback_profile: repository_digest_fallback
+
+  - profile_id: structured_config
+    family: schemas
+    enabled: true
+    file_patterns:
+      - "*.json"
+      - "*.yaml"
+      - "*.yml"
+      - "*.toml"
+      - "*.schema.json"
+    include_generated: false
+    include_vendored: false
+    tools:
+      - tool_id: builtin-structured-files
+        enabled: true
+        command: []
+        options:
+          preserve_keys: true
+          preserve_paths: true
+      - tool_id: jsonschema
+        enabled: false
+        command:
+          - jsonschema
+        options:
+          optional_dependency: true
+    validator_commands:
+      - command_id: yaml-parse
+        command:
+          - yamllint
+          - --strict
+        enabled: false
+        timeout_seconds: 30
+    fallback_profile: repository_digest_fallback
+
+  - profile_id: openapi_specs
+    family: api_specs
+    enabled: true
+    file_patterns:
+      - "*openapi*.json"
+      - "*openapi*.yaml"
+      - "*openapi*.yml"
+      - "openapi/**/*.json"
+      - "openapi/**/*.yaml"
+      - "openapi/**/*.yml"
+    include_generated: false
+    include_vendored: false
+    tools:
+      - tool_id: builtin-openapi-parser
+        enabled: true
+        command: []
+        options:
+          preserve_operation_ids: true
+          preserve_schema_refs: true
+      - tool_id: openapi-spec-validator
+        enabled: false
+        command:
+          - openapi-spec-validator
+        options:
+          optional_dependency: true
+    validator_commands:
+      - command_id: openapi-spec-validator
+        command:
+          - openapi-spec-validator
+        enabled: false
+        timeout_seconds: 30
+    fallback_profile: structured_config
+
+  - profile_id: rich_documents
+    family: docs
+    enabled: false
+    file_patterns:
+      - "*.pdf"
+      - "*.docx"
+      - "*.pptx"
+      - "*.odt"
+    include_generated: false
+    include_vendored: false
+    tools:
+      - tool_id: docling
+        enabled: false
+        command:
+          - docling
+        options:
+          optional_dependency: true
+      - tool_id: apache-tika
+        enabled: false
+        command:
+          - tika
+        options:
+          optional_dependency: true
+      - tool_id: unstructured
+        enabled: false
+        command:
+          - unstructured-ingest
+        options:
+          optional_dependency: true
+    validator_commands: []
+    fallback_profile: docs_markdown_html
+
+  - profile_id: repository_digest_fallback
+    family: repository_digest
+    enabled: false
+    file_patterns:
+      - "**/*"
+    include_generated: false
+    include_vendored: false
+    tools:
+      - tool_id: gitingest
+        enabled: false
+        command:
+          - gitingest
+        options:
+          optional_dependency: true
+    validator_commands: []
+    fallback_profile: null
+
+  - profile_id: optional_security_scanners
+    family: security_scanner
+    enabled: false
+    file_patterns:
+      - "**/*"
+    include_generated: false
+    include_vendored: false
+    tools:
+      - tool_id: presidio
+        enabled: false
+        command:
+          - presidio-analyzer
+        options:
+          optional_dependency: true
+      - tool_id: scancode
+        enabled: false
+        command:
+          - scancode
+        options:
+          optional_dependency: true
+      - tool_id: ort
+        enabled: false
+        command:
+          - ort
+        options:
+          optional_dependency: true
+      - tool_id: semgrep
+        enabled: false
+        command:
+          - semgrep
+        options:
+          optional_dependency: true
+    validator_commands: []
+    fallback_profile: null
+
+  - profile_id: optional_validators
+    family: validator
+    enabled: false
+    file_patterns:
+      - "**/*"
+    include_generated: false
+    include_vendored: false
+    tools: []
+    validator_commands:
+      - command_id: yamllint
+        command:
+          - yamllint
+          - config
+        enabled: false
+        timeout_seconds: 30
+      - command_id: shellcheck
+        command:
+          - shellcheck
+        enabled: false
+        timeout_seconds: 30
+    fallback_profile: null
