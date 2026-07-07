@@ -23,7 +23,7 @@ Create a separate reranker interface with a deterministic local/mock reranker fo
 
 ## Implementation Instructions
 1. Define an application-owned `Reranker` protocol. It must accept the sanitized query string, fused candidate IDs, sanitized excerpts or sanitized summary text, sanitized metadata, and profile settings.
-2. Do not pass raw unsanitized chunks, raw extractor output, raw local cache content, unauthorized metadata, or unfiltered candidates to the reranker.
+2. Do not pass raw unsanitized chunks, raw extractor output, raw local cache content, ineligible metadata, or unfiltered candidates to the reranker.
 3. Add typed `RerankerProfile` config for provider ID, model name, enabled flag, external-provider flag, candidate limit, timeout, max text length, and required credential environment variables.
 4. Implement `DeterministicMockReranker` for CI. It should produce stable ordering from lexical overlap, existing fused rank, authority rank, freshness, and chunk ID, without network access or process-randomized hashing.
 5. Add disabled optional profiles for local/private BGE reranker v2 m3, Jina Reranker v2 multilingual, and Cohere Rerank. External or remote providers must require explicit profile enablement and `IDP_BRAIN_ALLOW_EXTERNAL_MODELS=true`.
@@ -47,7 +47,7 @@ Create a separate reranker interface with a deterministic local/mock reranker fo
 - Reranking is behind an application-owned interface and separate from database retrieval.
 - CI uses a deterministic local/mock reranker with no external services.
 - External reranker providers are opt-in, disabled by default, and fail closed without explicit permission.
-- Reranker inputs contain sanitized, access-filtered content only.
+- Reranker inputs contain sanitized, corpus-filtered content only.
 - Fusion and reranking diagnostics remain available for later evidence bundles and explain output.
 
 ## Suggested Commit Message

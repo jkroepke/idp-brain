@@ -18,7 +18,7 @@ Add the retrieval regression test suite that validates sanitized exact, BM25, ve
 - `tests/retrieval/test_bm25_retrieval.py`
 - `tests/retrieval/test_vector_retrieval.py`
 - `tests/retrieval/test_query_profiles.py`
-- `tests/retrieval/test_access_filtering.py`
+- `tests/retrieval/test_corpus_eligibility_filtering.py`
 - `tests/retrieval/test_reciprocal_rank_fusion.py`
 - `tests/retrieval/test_reranking_integration.py`
 - `tests/retrieval/test_evidence_bundle_contract.py`
@@ -28,7 +28,7 @@ Add the retrieval regression test suite that validates sanitized exact, BM25, ve
 
 ## Implementation Instructions
 1. Build a deterministic sanitized fixture corpus with documentation chunks, code chunks, schema/API chunks, release-note chunks, conflict-claim chunks, and redaction-marker chunks.
-2. Build deterministic normalized relationship fixtures for lineage, dependency, conflict, and impact edges, including cycles, high-fanout nodes, unauthorized endpoints, source-disallowed endpoints, sensitivity-disallowed endpoints, license-disallowed endpoints, and uncited endpoints.
+2. Build deterministic normalized relationship fixtures for lineage, dependency, conflict, and impact edges, including cycles, high-fanout nodes, ineligible endpoints, source-disallowed endpoints, sensitivity-disallowed endpoints, license-disallowed endpoints, and uncited endpoints.
 3. Store only sanitized fixture content in the database. If a test needs to prove secret redaction safety, keep the raw secret literal inside the test assertion setup only long enough to verify it is absent from persisted chunks, embeddings, logs, evidence bundles, and diagnostics.
 4. Use the deterministic mock embedding provider and deterministic mock reranker by default in tests.
 5. Add integration tests for ParadeDB BM25 and pgvector only under markers such as `requires_pg_search` and `requires_pgvector`. The default unit suite must remain deterministic without external APIs.
@@ -54,7 +54,7 @@ Add the retrieval regression test suite that validates sanitized exact, BM25, ve
    - PII redaction
    - license policy filtering
 8. Add tests proving filters run before exact, BM25, vector, relationship, memory, diagnostics, CLI-facing, and MCP-facing retrieval helpers. Memory, CLI, and MCP helpers may be placeholders at this phase; bounded relationship traversal is a Phase 4 retrieval service contract and must have active tests.
-9. Add relationship traversal tests proving ACL, source, sensitivity, license, redaction, citation, version, and active-index filters are applied before traversal, and proving configured depth, fanout, candidate, type, direction, and cycle bounds are enforced.
+9. Add relationship traversal tests proving source allowlist, license, sensitivity, redaction, citation, version, and active-index filters are applied before traversal, and proving configured depth, fanout, candidate, type, direction, and cycle bounds are enforced.
 10. Add regression tests that BM25 scores and vector distances are never directly compared or added during fusion.
 11. Add evidence bundle snapshot tests for sanitized excerpts, citations, conflict markers, relationship path metadata, filter results, and diagnostics.
 12. Add CI commands to run:
@@ -78,7 +78,7 @@ Add the retrieval regression test suite that validates sanitized exact, BM25, ve
 ## Acceptance Criteria
 - Phase 4 retrieval behavior is covered by deterministic unit tests and extension-backed integration tests.
 - Exact, BM25, vector, bounded relationship, query profile, filtering, fusion, reranking, and evidence-bundle behavior can be validated locally and in CI.
-- Safety constraints for redaction, ACL/source/sensitivity/license filters, bounded relationship traversal, sanitized evidence, and score-domain separation are regression-tested.
+- Safety constraints for redaction, source/license/sensitivity/redaction filters, bounded relationship traversal, sanitized evidence, and score-domain separation are regression-tested.
 - External embedding or reranking services are not required for CI.
 - The suite provides the baseline retrieval confidence needed before downstream CLI/MCP surfaces and Phase 5 evaluation and operations work; Phase 4 tests service contracts, not MCP tool implementation.
 

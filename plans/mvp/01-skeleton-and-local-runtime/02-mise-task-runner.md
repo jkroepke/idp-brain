@@ -27,7 +27,7 @@ Add `mise` as the documented workflow entry point so contributors can install de
    - `retrieve`: implemented in Phase 5
    - `eval`: implemented in Phase 5
 5. Ensure `retrieve` accepts extra arguments syntactically for the future `mise run retrieve -- <query>` interface, even if it currently fails as deferred.
-6. Keep `retrieve` deferred in this step so no retrieval path can accidentally bypass the future ACL, source allowlist, sensitivity, and license filters required by `ARCHITECTURE.md`.
+6. Keep `retrieve` deferred in this step so no retrieval path can accidentally bypass the future source allowlist, license, sensitivity, and redaction filters required by `ARCHITECTURE.md`.
 7. Add `README.md` usage notes that say normal workflows should use `mise run <task>` and list the implemented Phase 1.2 commands.
 8. Do not add database, ingestion, retrieval, MCP, model-provider, or product behavior yet.
 

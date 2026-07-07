@@ -35,7 +35,7 @@ Define retrieval query profiles in configuration and typed code for documentatio
 9. Keep traversal disabled by default for profiles that do not need it. Enable only bounded lineage traversal for `release_change_search`, dependency or impact traversal for code/API profiles where configured, and conflict-edge traversal for `conflict_search`.
 10. Set default candidate limits within the architecture range of 50 to 200 for BM25 and vector retrieval, with smaller exact lookup limits where appropriate, and separate relationship limits that cannot expand the final candidate pool beyond configured bounds.
 11. Set default fusion method to `reciprocal_rank_fusion`; do not configure direct BM25-score-to-vector-distance comparison.
-12. Require every profile to declare the filter dimensions it honors: source allowlist, ACL visibility, sensitivity class, license policy status, version or release scope, and active index version.
+12. Require every profile to declare the filter dimensions it honors: source allowlist, visibility, sensitivity class, license policy status, version or release scope, and active index version.
 13. Validate that every referenced embedding model, vector index, BM25 field, relationship type, reranker profile, and fusion method exists or has a clear placeholder for a later step.
 14. Keep profile selection generic. Do not hardcode Crossplane, Kubernetes, Flux, or any other product-specific catalog in profile logic.
 

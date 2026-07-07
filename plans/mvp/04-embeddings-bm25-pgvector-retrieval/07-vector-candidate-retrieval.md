@@ -21,7 +21,7 @@ Implement pgvector candidate retrieval using configured query embeddings, filter
 
 ## Implementation Instructions
 1. Implement `VectorCandidateRetriever.retrieve(query, filters, profile, limit)` using the embedding provider selected by the active query profile.
-2. Generate a query embedding from the user query text and sanitized query metadata. Do not embed raw source chunks, raw file content, or unauthorized context in the query embedding request.
+2. Generate a query embedding from the user query text and sanitized query metadata. Do not embed raw source chunks, raw file content, or ineligible context in the query embedding request.
 3. Join `embeddings` to a filtered chunk scope before ordering by vector distance. The SQL shape must keep filters ahead of candidate exposure:
    ```sql
    SELECT embeddings.chunk_id,
@@ -56,7 +56,7 @@ Implement pgvector candidate retrieval using configured query embeddings, filter
 ## Acceptance Criteria
 - Vector retrieval uses pgvector over active sanitized chunk embeddings.
 - Query embedding generation is deterministic in CI and external-provider gated in local or production use.
-- Access, source, sensitivity, license, and version filters apply before vector candidates are exposed.
+- Source allowlist, license, sensitivity, redaction, and version filters apply before vector candidates are exposed.
 - Vector distances are not compared directly with BM25 scores.
 - Query embeddings and source text are not persisted or logged.
 

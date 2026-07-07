@@ -5,9 +5,9 @@ Add `idp-brain retrieve query` as the primary local command for hybrid retrieval
 
 ## Prerequisites
 - Phase 1 CLI scaffolding is complete.
-- Phase 4 exact, BM25, vector, fusion, reranking, ACL filtering, and evidence bundle assembly are complete.
+- Phase 4 exact, BM25, vector, fusion, reranking, corpus eligibility filtering, and evidence bundle assembly are complete.
 - Sanitized chunks, citations, index versions, and retrieval events are persisted.
-- `config/retrieval.yaml`, `config/access.yaml`, and `config/security.yaml` exist.
+- `config/retrieval.yaml`, `config/corpus.yaml`, and `config/security.yaml` exist.
 - `ARCHITECTURE.md` remains the source of truth for the evidence bundle contract and retrieval safety model.
 
 ## Files To Create Or Modify
@@ -34,11 +34,11 @@ Add `idp-brain retrieve query` as the primary local command for hybrid retrieval
    - `--token-budget INTEGER`, bounded by configuration.
    - `--json`, returning machine-readable evidence bundles.
 3. Call the internal retrieval service rather than issuing SQL, pgvector, ParadeDB, or reranker calls directly from the CLI.
-4. Build trusted access context from local configuration, session identity, or operator policy. Do not treat any caller-provided note, prompt, shell environment variable, or free-form context as trusted access context.
-5. Ensure the retrieval service applies source allowlists, ACL filters, sensitivity filters, license policy filters, and version filters before exact lookup, BM25, vector search, relationship traversal, reranking, event logging, and output formatting.
+4. Build trusted corpus scope from local configuration and stored source metadata. Do not treat any caller-provided note, prompt, shell environment variable, or free-form context as trusted corpus eligibility.
+5. Ensure the retrieval service applies source allowlists, corpus eligibility filters, sensitivity filters, license policy filters, redaction filters, version filters, and active-index filters before exact lookup, BM25, vector search, relationship traversal, reranking, event logging, and output formatting.
 6. Return a concise Rich table by default with rank, citation ID, source ID, version, locator/path, line range, score or rank explanation summary, freshness marker, conflict marker, and sanitized excerpt.
-7. JSON output must follow the evidence bundle contract: query, normalized query intent, selected chunk IDs, sanitized excerpts, citations, source authority ranking, freshness metadata, conflict markers, access-filter result, redaction status, and token budget estimate.
-8. Never print raw unsanitized chunks, raw fetched files, embedding vectors, direct SQL, vector-store internals, hidden ACL decisions, or reranker provider payloads.
+7. JSON output must follow the evidence bundle contract: query, normalized query intent, selected chunk IDs, sanitized excerpts, citations, source authority ranking, freshness metadata, conflict markers, corpus eligibility filter result, redaction status, and token budget estimate.
+8. Never print raw unsanitized chunks, raw fetched files, embedding vectors, direct SQL, vector-store internals, pre-filter decisions, or reranker provider payloads.
 9. Add or update `mise run retrieve -- <query>` so it delegates to `idp-brain retrieve query <query>`.
 10. Provide deterministic local and CI behavior by allowing fixture indexes to use mock embeddings and mock reranking when external providers are unavailable.
 
@@ -54,7 +54,7 @@ Add `idp-brain retrieve query` as the primary local command for hybrid retrieval
 ## Acceptance Criteria
 - `idp-brain retrieve query` returns citation-backed sanitized evidence summaries for configured fixture data.
 - The command uses the shared retrieval service and does not expose SQL, vector-store access, raw chunks, or provider internals.
-- ACL, source, sensitivity, license, and version filters are applied before candidate generation and output.
+- Source allowlist, license, sensitivity, redaction, version, and active-index filters are applied before candidate generation and output.
 - Local and CI tests pass without external embedding or reranking services.
 - `mise run retrieve -- <query>` works as the documented local task.
 

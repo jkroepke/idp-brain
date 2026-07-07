@@ -47,7 +47,7 @@ Implement ParadeDB BM25 candidate retrieval over sanitized chunk text and profil
 
 ## Acceptance Criteria
 - BM25 candidate retrieval is implemented through ParadeDB over sanitized chunks.
-- Access, source, sensitivity, license, and version filters are applied before candidates leave SQL.
+- Source allowlist, license, sensitivity, redaction, and version filters are applied before candidates leave SQL.
 - BM25 scores are preserved for diagnostics but not compared directly with vector distances.
 - CI has deterministic unit coverage without external services, plus integration coverage when `pg_search` is available.
 - No raw unsanitized chunks are logged or returned.

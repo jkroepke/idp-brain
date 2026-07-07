@@ -14,26 +14,27 @@ If these terms are new: RAG is short for Retrieval-Augmented Generation; in
 this plan it means "retrieve the right evidence before an answer is written."
 Local-first means the useful development path runs on a workstation and in CI
 without required hosted services; CLI means terminal commands; CI means
-automated checks such as GitHub Actions; ACL means access rules that decide
-which sources a caller may see; LLM means large language model; MCP means a
-read-only local tool protocol that agents can call.
+automated checks such as GitHub Actions; corpus eligibility means the source,
+license, sensitivity, redaction, and version rules that decide which records
+can be retrieved; LLM means large language model; MCP means a read-only local
+tool protocol that agents can call.
 
 ## MVP Goal And Boundaries
 
 Build the first useful `idp-brain` milestone described in `ARCHITECTURE.md`: a
 local-first Python 3.14 RAG pipeline that ingests configured sources, persists
 only sanitized evidence, indexes it with PostgreSQL 18, ParadeDB `pg_search`,
-and pgvector, and exposes ACL-safe retrieval through CLI and read-only MCP
+and pgvector, and exposes corpus-safe retrieval through CLI and read-only MCP
 tools.
 
-The MVP ends when sanitized ingestion, citations, ACL/source/license/sensitivity-safe
+The MVP ends when sanitized ingestion, citations, source/license/sensitivity/redaction-safe
 exact/BM25/vector retrieval, evidence bundles, MCP `search`, `fetch`,
 `explain_search`, and `list_sources`, retrieval evaluation, and basic operations
 telemetry work locally and in CI.
 
-Out of scope for the MVP: Apache ACE, memory UX, embedding fine-tuning,
-production high availability, remote model serving, answer generation,
-developer portal, and any hardcoded platform-tool catalog.
+Out of scope for the MVP: memory UX, embedding fine-tuning, production high
+availability, remote model serving, answer generation, developer portal, and
+any hardcoded platform-tool catalog.
 
 ## Plain-Language Project Overview
 
@@ -53,13 +54,13 @@ The basic data flow is:
 1. Read source configuration.
 2. Acquire or inspect the configured source.
 3. Extract useful text, metadata, symbols, claims, and citations.
-4. Redact secrets and classify sensitivity, visibility, access, and license
+4. Redact secrets and classify sensitivity, visibility, source eligibility, and license
    status before anything is persisted.
 5. Store sanitized chunks, citations, metadata, lineage, and retrieval records
    in PostgreSQL.
 6. Build exact lookup, BM25 keyword, and vector search indexes over sanitized
    records.
-7. Filter every query by trusted server-side access rules before searching.
+7. Filter every query by trusted corpus eligibility rules before searching.
 8. Merge and rerank allowed candidates.
 9. Return an evidence bundle with sanitized excerpts, citation IDs, source
    metadata, diagnostics, and conflict markers where needed.
@@ -90,8 +91,11 @@ The important terms in this plan are:
   implementers.
 - CI: continuous integration. In this plan it mainly means GitHub Actions jobs
   that run checks in a clean environment.
-- ACL: access-control list. It is the server-side policy that decides which
-  sources, chunks, citations, and diagnostics a caller is allowed to see.
+- Corpus eligibility: the server-side source allowlist, license, sensitivity,
+  redaction, version, and active-index policy that decides which source records
+  are retrievable. In this MVP every invited user can see the same approved
+  corpus; there is no per-caller or role-based filtering
+  control.
 - Source allowlist: the configured list of sources a query is allowed to use.
   It prevents one query from silently searching every known source.
 - Sensitivity label: a classification such as public, internal, confidential,
@@ -120,11 +124,11 @@ The important terms in this plan are:
 - ParadeDB `pg_search`: the PostgreSQL-based BM25 search layer used by this
   MVP.
 - Reranker: a component that reorders already-filtered, sanitized candidates.
-  It must not receive unauthorized or raw unsanitized text.
+  It must not receive ineligible or raw unsanitized text.
 - Evidence bundle: the safe retrieval response contract. It contains selected
   evidence, citation references, diagnostics, filters applied, freshness and
   authority metadata, and conflict information without leaking raw source text
-  or hidden access details.
+  or hidden pre-filter details.
 - MCP: Model Context Protocol. In this MVP it is a read-only local tool server
   for agents. It exposes retrieval tools only; it does not mutate ingestion,
   configuration, databases, or external systems.
@@ -150,13 +154,14 @@ the handoff instead of silently treating the step as done.
   sent to rerankers or LLM-facing context.
 - Deterministic local/mock embedding and reranking must work in CI without
   external API calls.
-- ACL, source allowlist, sensitivity, and license filters run before exact
+- Source allowlist, license, sensitivity, redaction, version, and active-index
+  filters run before exact
   lookup, BM25, vector, relationship, memory, diagnostics, CLI output, and MCP
   fetch/search subqueries.
-- Apache ACE, memory UX, embedding fine-tuning, production HA, and remote model
-  serving are out of MVP.
-- Caller-provided MCP context is only a hint; trusted visibility and access
-  rights are derived server-side.
+- Memory UX, embedding fine-tuning, production HA, and remote model serving are
+  out of MVP.
+- Caller-provided MCP context is only a hint; trusted corpus eligibility is
+  derived server-side.
 - First/last version lineage must be evidence-backed. Unknown lineage remains
   unknown.
 - GitHub Actions use ephemeral databases and validation-only ingestion until
@@ -178,17 +183,18 @@ filters.
 - Persistence paths should reject unredacted candidates. Do not rely on caller
   discipline when a guard function, type, status field, or validation check can
   enforce the rule.
-- Access filters run before retrieval subqueries. Do not retrieve a broad set
+- Corpus eligibility filters run before retrieval subqueries. Do not retrieve a broad set
   and filter it later, because ranking scores, counts, diagnostics, latency, and
-  error messages can leak that restricted material exists.
+  error messages can leak that ineligible material exists.
 - MCP `caller_context_hint` can help disambiguate wording, but it never grants
-  access. Trusted identity, groups, visibility labels, source allowlists,
-  sensitivity policy, and license policy are derived by the server.
+  retrieval eligibility. Source allowlists, visibility labels, sensitivity
+  policy, redaction status, license policy, and version scope are derived by the
+  server.
 - Diagnostics must be useful but safe. They can show sanitized IDs, score
   components, selected index path, filter summaries, redaction status,
   correlation IDs, and timings. They must not show SQL with sensitive literals,
-  raw chunks, raw provider payloads, embedding vectors, hidden ACL details, or
-  unauthorized result counts.
+  raw chunks, raw provider payloads, embedding vectors, pre-filter diagnostics,
+  or ineligible result counts.
 - Citations are mandatory for returned evidence. If the system cannot prove the
   source, it should drop the candidate, mark it as diagnostic-only, or report
   unknown lineage. Do not invent first/last versions.
@@ -285,7 +291,7 @@ basic CI. After this phase, the repository should be installable, testable, and
 able to start its required local database.
 
 Phase 2 defines configuration and the core relational model. It creates the
-source catalog shape, access policy records, redaction and license records,
+source catalog shape, corpus eligibility records, redaction and license records,
 index version records, embedding job records, database tasks, and migration
 tests. After this phase, later code has stable data contracts to build on.
 
@@ -297,7 +303,7 @@ safety in tests.
 
 Phase 4 builds retrieval. It adds embedding providers, vector storage, BM25 and
 pgvector indexes, exact lookup, lexical and semantic candidate retrieval, query
-profiles, pre-subquery access filtering, rank fusion, reranking, evidence bundle
+profiles, pre-subquery corpus eligibility filtering, rank fusion, reranking, evidence bundle
 contracts, and retrieval tests. After this phase, retrieval should be safe and
 evidence-backed inside the service layer.
 
@@ -310,7 +316,6 @@ this phase, the MVP should be usable locally and validated in CI.
 ## What Not To Do
 
 - Do not add answer generation to the MVP.
-- Do not add Apache ACE integration to the MVP.
 - Do not add production HA, remote model serving, or embedding fine-tuning to
   the MVP.
 - Do not create a hardcoded catalog of platform tools, products, CLIs, SDKs, or
@@ -319,8 +324,8 @@ this phase, the MVP should be usable locally and validated in CI.
 - Do not store raw source files, raw chunks, raw extracted text, raw secrets,
   raw provider payloads, or reversible secret hashes.
 - Do not embed or rerank unredacted text.
-- Do not trust MCP caller-provided context as authorization.
-- Do not run access filters only after retrieval has already produced candidate
+- Do not trust MCP caller-provided context as retrieval eligibility.
+- Do not run corpus eligibility filters only after retrieval has already produced candidate
   sets.
 - Do not return uncited evidence.
 - Do not hide source conflicts by merging them into one unsupported statement.
@@ -348,14 +353,14 @@ behavior before the listed steps add those capabilities.
 ## Phase 2: Configuration And Core Data Model
 
 This phase gives the project stable configuration and database contracts. It is
-where source identity, visibility, access, redaction, license, indexing, and
+where source identity, visibility, corpus eligibility, redaction, license, indexing, and
 embedding job records become explicit instead of being implied by code.
 
 - [Phase directory](02-configuration-and-data-model/)
 - [2.1 Config Loader Models](02-configuration-and-data-model/01-config-loader-models.md)
 - [2.2 Example Config Files](02-configuration-and-data-model/02-example-config-files.md)
 - [2.3 Core SQLAlchemy Models](02-configuration-and-data-model/03-core-sqlalchemy-models.md)
-- [2.4 Access Policy Models](02-configuration-and-data-model/04-access-policy-models.md)
+- [2.4 Corpus Eligibility Policy Models](02-configuration-and-data-model/04-corpus-eligibility-policy-models.md)
 - [2.5 Redaction And License Models](02-configuration-and-data-model/05-redaction-and-license-models.md)
 - [2.6 Index Versions And Embedding Jobs](02-configuration-and-data-model/06-index-versions-and-embedding-jobs.md)
 - [2.7 DB Mise Tasks](02-configuration-and-data-model/07-db-mise-tasks.md)
@@ -382,7 +387,7 @@ chunked safely before persistence or indexing.
 ## Phase 4: Embeddings, BM25, pgvector, And Retrieval
 
 This phase builds the retrieval engine over sanitized records. Exact lookup,
-BM25, and vector search are separate candidate paths that are access-filtered
+BM25, and vector search are separate candidate paths that are filtered for corpus eligibility
 before execution, then fused, optionally reranked, and returned as citation
 backed evidence bundles.
 
@@ -395,7 +400,7 @@ backed evidence bundles.
 - [4.6 BM25 Candidate Retrieval](04-embeddings-bm25-pgvector-retrieval/06-bm25-candidate-retrieval.md)
 - [4.7 Vector Candidate Retrieval](04-embeddings-bm25-pgvector-retrieval/07-vector-candidate-retrieval.md)
 - [4.8 Query Profiles](04-embeddings-bm25-pgvector-retrieval/08-query-profiles.md)
-- [4.9 Access Filtering Before Subqueries](04-embeddings-bm25-pgvector-retrieval/09-access-filtering-before-subqueries.md)
+- [4.9 Corpus Eligibility Filtering Before Subqueries](04-embeddings-bm25-pgvector-retrieval/09-corpus-eligibility-filtering-before-subqueries.md)
 - [4.10 Reciprocal Rank Fusion](04-embeddings-bm25-pgvector-retrieval/10-reciprocal-rank-fusion.md)
 - [4.11 Reranker Interface](04-embeddings-bm25-pgvector-retrieval/11-reranker-interface.md)
 - [4.12 Evidence Bundle Contract](04-embeddings-bm25-pgvector-retrieval/12-evidence-bundle-contract.md)

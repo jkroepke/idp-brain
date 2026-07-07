@@ -28,7 +28,7 @@ Implement `local_directory` source fetching as a deterministic local snapshot pa
 3. Require configured local paths to be explicit, normalized, and inside either the repository test fixtures or an operator-configured allowlist; reject path traversal and implicit home-directory expansion in source configuration.
 4. Compute a deterministic source version for the snapshot from source ID, a stable configured root identifier or repository-relative fixture path, include/exclude configuration, and artifact content hashes. Use a stable hash such as SHA-256, and do not include machine-specific absolute temp or workspace paths in the source version hash.
 5. Walk files in sorted path order so local and CI output is stable.
-6. Record `source_versions`, `artifacts`, and `artifact_versions` with path, logical locator, checksum, size, mtime when useful, source type, visibility label, sensitivity class, license policy label, access policy label, first seen timestamp, and last verified timestamp.
+6. Record `source_versions`, `artifacts`, and `artifact_versions` with path, logical locator, checksum, size, mtime when useful, source type, visibility label, sensitivity class, license policy label, corpus eligibility label, first seen timestamp, and last verified timestamp.
 7. Read file bytes only as needed to compute checksums and later extraction input; do not persist raw file content in Postgres, logs, diagnostics, or JSON command output.
 8. Apply source-level include and exclude globs before artifact records are inserted, and preserve skip reasons in sanitized diagnostics.
 9. Keep generated, vendored, extraction, redaction, chunking, and embedding behavior for later steps; this step only snapshots local artifacts and records safe metadata.
@@ -43,7 +43,7 @@ Implement `local_directory` source fetching as a deterministic local snapshot pa
 
 ## Acceptance Criteria
 - `local_directory` sources can be ingested without network access.
-- Artifact and source version records carry access, visibility, sensitivity, and license policy labels.
+- Artifact and source version records carry corpus eligibility, visibility, sensitivity, and license policy labels.
 - Local fixture ingestion is deterministic in CI.
 - Raw unsanitized file content is never persisted, embedded, logged, returned, or included in diagnostics.
 - The implementation creates safe artifact candidates for later discovery, extraction, redaction, and chunking steps.

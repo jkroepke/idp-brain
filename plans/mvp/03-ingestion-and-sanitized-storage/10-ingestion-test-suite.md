@@ -34,7 +34,7 @@ Add a focused ingestion test suite and CI coverage that verifies source listing,
 6. Add log capture assertions for representative failure paths so raw unsanitized chunks, secrets, PII, credentials, and raw diffs do not appear in logs or diagnostics.
 7. Add end-to-end tests that ingest fixtures through the public CLI or orchestration entry point and verify persisted records are sanitized, cited, labeled, and versioned.
 8. Verify generated and vendored files are excluded by default and included only with explicit, auditable profile overrides.
-9. Verify extractor and chunker outputs carry source ID, source version ID, artifact ID, locator, line range where available, extractor name and version, extractor profile, redaction status, visibility label, sensitivity class, access label, license policy label, and sanitized content hash.
+9. Verify extractor and chunker outputs carry source ID, source version ID, artifact ID, locator, line range where available, extractor name and version, extractor profile, redaction status, visibility label, sensitivity class, corpus eligibility label, license policy label, and sanitized content hash.
 10. Verify incremental ingestion updates counters, avoids duplicate unchanged chunks, and tombstones removed artifacts and chunks without deleting historical citation records.
 11. Add or update `mise run test` and `mise run ci` so the ingestion suite runs locally and in GitHub Actions with the same commands.
 12. Keep scheduled ingestion validation out of scope. GitHub Actions should use ephemeral databases and fixture sources only until export/import, encryption, retention, restore checks, and index promotion are implemented later.
@@ -50,7 +50,7 @@ Add a focused ingestion test suite and CI coverage that verifies source listing,
 - Phase 3 has regression coverage for every ingestion stage and safety invariant.
 - CI does not depend on external source services, external security scanners, external embedding providers, or durable databases.
 - Tests fail if raw unsanitized chunks, fixture secrets, PII, credentials, or raw diffs are persisted, embedded, logged, returned, or placed in evaluation or LLM-facing data paths.
-- Tests prove persisted records carry source, access, visibility, sensitivity, license policy, redaction status, citation, version, and sanitized content hash metadata.
+- Tests prove persisted records carry source, corpus eligibility, visibility, sensitivity, license policy, redaction status, citation, version, and sanitized content hash metadata.
 - The ingestion suite is runnable through documented `mise` tasks.
 
 ## Suggested Commit Message

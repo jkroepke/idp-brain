@@ -32,7 +32,7 @@ Detect unchanged, changed, added, and removed artifacts and chunks across ingest
 7. When an artifact, chunk, fact, claim, or relationship disappears from the current source version, mark the membership inactive or tombstoned with `last_seen` or `last_containing_version` where known. Do not delete historical rows needed for citations and lineage.
 8. Keep unknown lineage unknown. Do not infer that a removed file was removed in a release unless Git ancestry or source version mapping proves it.
 9. Generate embeddings only for changed sanitized chunks in later Phase 4 code. In this step, create deterministic pending indicators or counters only if the Phase 2 embedding job table already exists.
-10. Carry source ID, source version ID, access label, visibility label, sensitivity class, license policy label, redaction status, and sanitized content hash onto version membership and tombstone records.
+10. Carry source ID, source version ID, corpus eligibility label, visibility label, sensitivity class, license policy label, redaction status, and sanitized content hash onto version membership and tombstone records.
 11. Update ingestion run counters for unchanged artifacts, changed artifacts, added artifacts, tombstoned artifacts, unchanged chunks, changed chunks, and tombstoned chunks.
 12. Ensure tombstone diagnostics contain locators and sanitized hashes only, never raw removed content.
 
@@ -48,7 +48,7 @@ Detect unchanged, changed, added, and removed artifacts and chunks across ingest
 - Changed sanitized chunks receive new version membership without mutating historical evidence.
 - Removed artifacts and chunks are tombstoned rather than hard deleted.
 - Ingestion run counters and diagnostics explain incremental decisions without exposing raw content.
-- License, source, access, visibility, sensitivity, redaction, and sanitized hash metadata remain attached to active and tombstoned records.
+- License, source, corpus eligibility, visibility, sensitivity, redaction, and sanitized hash metadata remain attached to active and tombstoned records.
 
 ## Suggested Commit Message
 `feat: add incremental ingestion tombstones`

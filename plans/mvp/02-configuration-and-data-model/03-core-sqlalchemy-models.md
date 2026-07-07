@@ -31,7 +31,7 @@ Add the canonical SQLAlchemy and Alembic data model for configured sources, reso
 7. Define `citations` as stable pointers to source evidence with source URL, commit/tag/version/checksum, path or locator, line range, source type, sanitized content hash, redaction status, visibility label placeholder, and sensitivity placeholder for later policy migrations.
 8. Define `claims` with subject, predicate, normalized value JSON, value type, scope JSON, confidence, authority rank, and citation links. Define conflicts through `claim_conflicts` without silently resolving incompatible claims.
 9. Define `relationships` as typed, versioned, citation-backed links with initial types `contains`, `defines`, `references`, `derived_from`, `cites`, `introduced_in`, `removed_in`, `changed_by`, and `conflicts_with`.
-10. Keep BM25 indexes, vector storage, embedding jobs, access policy tables, redaction events, and license findings for later Phase 2 steps.
+10. Keep BM25 indexes, vector storage, embedding jobs, corpus eligibility metadata, redaction events, and license findings for later Phase 2 steps.
 11. Update Alembic metadata loading so migrations can import the model metadata without importing ingestion, retrieval, or model-provider code.
 
 ## Tests And Checks

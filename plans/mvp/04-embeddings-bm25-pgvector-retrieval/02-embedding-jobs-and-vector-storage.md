@@ -7,7 +7,7 @@ Embed changed sanitized chunks and store vectors in pgvector-backed tables with 
 - `ARCHITECTURE.md` remains the source of truth for architecture decisions in this step.
 - Step 4.1 is complete.
 - Phase 2 has created `embedding_models`, `embedding_jobs`, `index_versions`, and database migration plumbing.
-- Phase 3 has created sanitized `chunks`, chunk tombstones or active flags, citations, redaction status, access labels, sensitivity class, and license policy status.
+- Phase 3 has created sanitized `chunks`, chunk tombstones or active flags, citations, redaction status, corpus eligibility labels, sensitivity class, and license policy status.
 - Raw fetched source content remains outside Postgres and is never used by this step.
 
 ## Files To Create Or Modify

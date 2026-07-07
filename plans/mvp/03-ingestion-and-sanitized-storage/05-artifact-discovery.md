@@ -6,7 +6,7 @@ Classify fetched artifacts by path, type, language, generated status, vendored s
 ## Prerequisites
 - `ARCHITECTURE.md` remains the source of truth for architecture decisions in this step.
 - Phase 3.3 and Phase 3.4 are complete.
-- Phase 2 data model includes `artifacts`, `artifact_versions`, and fields for artifact role, language, generated status, vendored status, checksums, access labels, sensitivity class, and license policy status.
+- Phase 2 data model includes `artifacts`, `artifact_versions`, and fields for artifact role, language, generated status, vendored status, checksums, corpus eligibility labels, sensitivity class, and license policy status.
 - Source configuration supports include and exclude paths plus extractor profile names.
 
 ## Files To Create Or Modify
@@ -29,7 +29,7 @@ Classify fetched artifacts by path, type, language, generated status, vendored s
 7. Assign artifact roles such as `documentation`, `source_code`, `schema`, `openapi_spec`, `json_schema`, `example`, `test`, `changelog`, `license`, `generated`, `vendored`, and `unknown`.
 8. Assign extractor profiles from `config/extractors.yaml` based on source type, artifact role, language, and path rules. Do not hardcode platform-specific catalogs.
 9. Persist only artifact metadata and discovery diagnostics. Do not persist raw artifact bodies, extracted text, chunks, embeddings, or LLM context.
-10. Carry source ID, source version ID, access policy label, visibility label, sensitivity class, license policy label, source priority, and checksums onto discovery-updated artifact records.
+10. Carry source ID, source version ID, corpus eligibility label, visibility label, sensitivity class, license policy label, source priority, and checksums onto discovery-updated artifact records.
 
 ## Tests And Checks
 - `uv run pytest tests/test_artifact_discovery.py`
@@ -41,7 +41,7 @@ Classify fetched artifacts by path, type, language, generated status, vendored s
 - Artifact discovery runs after fetch and before extraction.
 - Generated and vendored code artifacts are skipped by default unless a source profile opts in with an auditable reason.
 - Include and exclude behavior is stable across local and CI runs.
-- Artifact metadata carries access, visibility, sensitivity, source, and license policy labels.
+- Artifact metadata carries corpus eligibility, visibility, sensitivity, source, and license policy labels.
 - Raw unsanitized artifact content is never persisted, embedded, logged, returned, or sent to later services during discovery.
 
 ## Suggested Commit Message

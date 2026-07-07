@@ -21,18 +21,18 @@ Add an automated local and CI-ready smoke test proving PostgreSQL can use `vecto
    - `id text PRIMARY KEY`
    - `sanitized_text text NOT NULL`
    - `source_allowlisted boolean NOT NULL DEFAULT true`
-   - `access_policy_id text NOT NULL DEFAULT 'public'`
-   - `visibility_label text NOT NULL DEFAULT 'public'`
+   - `corpus_policy_id text NOT NULL DEFAULT 'invited_corpus'`
+   - `visibility_label text NOT NULL DEFAULT 'invited_users'`
    - `sensitivity_class text NOT NULL DEFAULT 'public'`
    - `license_policy_status text NOT NULL DEFAULT 'allowed'`
    - `embedding vector(3) NOT NULL`
 5. Insert only sanitized fixture rows such as short public documentation phrases. Do not include secrets, PII, upstream raw chunks, private source names, or real customer/project data.
-6. Keep the fixture metadata fields aligned with the later retrieval rule that source allowlist, ACL/access policy, visibility, sensitivity, and license filters must run before exact, BM25, vector, relationship, memory, diagnostics, CLI, or MCP retrieval paths.
+6. Keep the fixture metadata fields aligned with the later retrieval rule that source allowlist, visibility, sensitivity, license, redaction, and version filters must run before exact, BM25, vector, relationship, memory, diagnostics, CLI, or MCP retrieval paths.
 7. Create one ParadeDB BM25 index over the fixture key and sanitized text fields using `USING bm25` and a stable `key_field`.
 8. Create one pgvector HNSW index using cosine ops over the `embedding` column.
 9. Run one BM25 query with `|||` that returns the expected fixture row.
 10. Run one vector query ordered by `<=>` that returns the expected fixture row.
-11. Include these filter predicates in both fixture queries: `source_allowlisted = true`, `access_policy_id = 'public'`, `visibility_label = 'public'`, `sensitivity_class = 'public'`, and `license_policy_status = 'allowed'`.
+11. Include these filter predicates in both fixture queries: `source_allowlisted = true`, `corpus_policy_id = 'invited_corpus'`, `visibility_label = 'invited_users'`, `sensitivity_class = 'public'`, and `license_policy_status = 'allowed'`.
 12. Assert the extension names are present so failures identify whether the problem is missing `vector`, `pg_search`, `pg_trgm`, BM25, or HNSW support.
 13. Update the explicit `mise run test:integration` task from Phase 1.6 to include this smoke test, and ensure `mise run ci` can run it after `mise run db:migrate`.
 14. Do not add application tables, retrieval services, embedding providers, external model calls, or source ingestion.
@@ -47,8 +47,8 @@ Add an automated local and CI-ready smoke test proving PostgreSQL can use `vecto
 ## Acceptance Criteria
 - Extension compatibility is proven by behavior, not only by extension presence.
 - The test uses sanitized fixture content and no external services.
-- The fixture includes source allowlist, ACL/access-policy, visibility, sensitivity, and license metadata fields for later filter-first retrieval work.
-- BM25 and vector fixture queries include the same allowlist, access-policy, visibility, sensitivity, and license predicates required by later retrieval paths.
+- The fixture includes source allowlist, corpus eligibility, visibility, sensitivity, and license metadata fields for later filter-first retrieval work.
+- BM25 and vector fixture queries include the same allowlist, corpus-eligibility, visibility, sensitivity, and license predicates required by later retrieval paths.
 - The smoke test can run repeatedly against a disposable database locally and in CI.
 - Failures clearly identify missing `vector`, `pg_search`, `pg_trgm`, BM25, or HNSW support.
 - The test does not persist raw unsanitized chunks, embeddings from real source data, retrieval logs, or model-provider output.

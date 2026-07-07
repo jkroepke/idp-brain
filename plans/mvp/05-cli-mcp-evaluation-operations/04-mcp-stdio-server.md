@@ -36,7 +36,7 @@ Add a local MCP stdio server that exposes read-only retrieval tools to agents wh
    - `explain_search`
    - `list_sources`
 5. Route all tool calls through application services. MCP handlers must not execute SQL, call pgvector or ParadeDB directly, expose vector-store handles, mutate ingestion state, change configuration, write memory, activate index versions, or run external workflows.
-6. Derive trusted access context on the server side from local configuration, session identity, or operator policy. Treat `caller_context_hint` as an untrusted hint only.
+6. Derive trusted corpus scope on the server side from local configuration and stored source metadata. Treat `caller_context_hint` as an untrusted hint only.
 7. Use Pydantic schemas for tool inputs and outputs. Bound string lengths, result counts, and token budgets by configuration before calling retrieval services.
 8. Ensure server logs contain tool name, sanitized request metadata, correlation ID, redaction status, result counts, and latency only. Logs must not contain raw unsanitized chunks, raw source files, full prompts, secrets, PII, vectors, SQL, or provider payloads.
 9. Add `mise run mcp` if the project task list includes local MCP startup; otherwise document `uv run idp-brain mcp serve --transport stdio` in command help only.
@@ -51,7 +51,7 @@ Add a local MCP stdio server that exposes read-only retrieval tools to agents wh
 ## Acceptance Criteria
 - The MCP server starts over stdio and exposes exactly the MVP read-only retrieval tools.
 - MCP handlers use shared application services and never expose SQL, vector-store access, ingestion mutation, configuration mutation, or index promotion.
-- `caller_context_hint` is never used as trusted access context.
+- `caller_context_hint` is never used as trusted corpus scope.
 - Logs and tool responses contain sanitized evidence and metadata only.
 - CI can test the server deterministically without external network, embedding, or reranking services.
 

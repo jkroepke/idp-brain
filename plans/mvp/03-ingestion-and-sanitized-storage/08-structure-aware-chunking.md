@@ -1,7 +1,7 @@
 # 3.8: Structure Aware Chunking
 
 ## Goal
-Create stable, structure-aware sanitized chunks from redacted extraction candidates while preserving provenance, source authority metadata, access labels, sensitivity labels, license labels, and citation locators.
+Create stable, structure-aware sanitized chunks from redacted extraction candidates while preserving provenance, source authority metadata, corpus eligibility labels, sensitivity labels, license labels, and citation locators.
 
 ## Prerequisites
 - Phase 3.7 is complete, and only redacted or redaction-checked candidates can enter chunking.
@@ -32,7 +32,7 @@ Create stable, structure-aware sanitized chunks from redacted extraction candida
 5. Add a source-code chunking interface that consumes symbol metadata from the tree-sitter source-code extractor and can later accept language-native extractors. For unsupported languages, create file-level or block-level chunks only when source code artifacts are explicitly enabled, and preserve language, package or namespace when known, symbol path when known, signature text when known, imports when known, and parent context when known.
 6. Use chunk size and overlap settings from `config/extractors.yaml`; keep defaults deterministic and conservative.
 7. Keep chunk IDs stable by deriving them from source ID, source version ID, artifact locator, sanitized content hash, chunker profile, structure path, and ordinal within the structure.
-8. Persist only sanitized chunk text and sanitized metadata. Store citations with source ID, source URL, commit/tag/version/checksum, path or locator, line range, source type, sanitized content hash, redaction status, visibility label, sensitivity class, access label, and license policy label.
+8. Persist only sanitized chunk text and sanitized metadata. Store citations with source ID, source URL, commit/tag/version/checksum, path or locator, line range, source type, sanitized content hash, redaction status, visibility label, sensitivity class, corpus eligibility label, and license policy label.
 9. Store normalized facts, claims, and relationships only when an extractor emits structured values with citations. Do not invent claims from narrative text in this step.
 10. Do not create embeddings or BM25 indexes in this step. Phase 4 owns embedding, vector storage, and retrieval indexes.
 11. Ensure prompt-injection-like source text remains data inside sanitized chunks and is never executed or treated as instruction.
@@ -47,7 +47,7 @@ Create stable, structure-aware sanitized chunks from redacted extraction candida
 ## Acceptance Criteria
 - Chunking runs only after redaction.
 - Markdown, HTML, structured data, OpenAPI, JSON Schema, text, and explicit source-code fallback chunks preserve meaningful structure and provenance.
-- Persisted chunks and citations carry source, access, visibility, sensitivity, license policy, redaction status, extractor, chunker, and sanitized content hash metadata.
+- Persisted chunks and citations carry source, corpus eligibility, visibility, sensitivity, license policy, redaction status, extractor, chunker, and sanitized content hash metadata.
 - Chunk boundaries are stable enough for incremental ingestion to compare unchanged chunks.
 - No raw unsanitized chunks are persisted, embedded, logged, returned, indexed, or exposed to evaluation or LLM context.
 

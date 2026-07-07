@@ -28,9 +28,9 @@ Merge exact, BM25, vector, relationship, and future memory candidates with recip
 5. Treat lower vector distance as better only when computing the vector path rank before fusion. Do not compare raw vector distance to BM25 score or exact match confidence.
 6. Treat higher BM25 score as better only when computing the BM25 path rank before fusion. Do not normalize BM25 score into vector distance space.
 7. Make tie-breaking deterministic: fused score descending, best exact rank, best BM25 rank, best vector rank, authority rank, freshness, chunk ID.
-8. Include authority and freshness as configured rerank/final-order signals only after candidate fusion, not as a reason to bypass access filters or evidence requirements.
+8. Include authority and freshness as configured rerank/final-order signals only after candidate fusion, not as a reason to bypass corpus eligibility filters or evidence requirements.
 9. Add a bounded relationship candidate expansion inside `HybridRetrievalService` when the active profile enables it. It must start from filtered seed candidates, traverse only normalized PostgreSQL relationship rows from Step 4.9, honor profile depth/fanout/type/direction/candidate limits, and return citation-backed entity or chunk candidate IDs with relationship path metadata.
-10. Treat relationship candidates as their own ranked path before fusion. They must not replace exact, BM25, or vector evidence, and they must not be generated from unauthorized or uncited relationship endpoints.
+10. Treat relationship candidates as their own ranked path before fusion. They must not replace exact, BM25, or vector evidence, and they must not be generated from ineligible or uncited relationship endpoints.
 11. Add a `HybridRetrievalService` orchestration method that obtains filtered candidates from exact, BM25, vector, and enabled bounded relationship traversal, fuses them, and passes the fused list to the reranker step when configured.
 12. Keep final evidence snippets out of this step. Fusion returns ranked candidate IDs and diagnostics for Step 4.11 and Step 4.12.
 13. Make the fusion function pure and deterministic so unit tests can cover ranking without a database.

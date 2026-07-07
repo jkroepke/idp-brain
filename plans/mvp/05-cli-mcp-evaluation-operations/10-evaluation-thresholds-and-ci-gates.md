@@ -6,7 +6,7 @@ Define release-blocking retrieval and safety thresholds in `config/evaluation.ya
 ## Prerequisites
 - Step 5.8 has added `idp-brain eval run`.
 - Step 5.9 has added retrieval metrics and reporting.
-- Security, redaction, citation, ACL, lineage, freshness, and conflict fixtures exist.
+- Security, redaction, citation, corpus eligibility, lineage, freshness, and conflict fixtures exist.
 - `ARCHITECTURE.md` remains the source of truth for release gates and the rule that thresholds must exist before gates block releases.
 
 ## Files To Create Or Modify

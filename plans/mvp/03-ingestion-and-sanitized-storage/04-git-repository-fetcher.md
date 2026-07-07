@@ -7,7 +7,7 @@ Implement `git_repository` fetching with local cache isolation, commit and ref p
 - `ARCHITECTURE.md` remains the source of truth for architecture decisions in this step.
 - Phase 3.2 and Phase 3.3 are complete.
 - The `git` CLI is available in local development and CI.
-- Source configuration supports `git_repository` sources with repository URL, tracked refs, version strategy, include paths, exclude paths, extractor profile, source priority, access labels, sensitivity class, and license policy.
+- Source configuration supports `git_repository` sources with repository URL, tracked refs, version strategy, include paths, exclude paths, extractor profile, source priority, corpus eligibility labels, sensitivity class, and license policy.
 
 ## Files To Create Or Modify
 - `src/idp_brain/ingestion/fetchers/git_repository.py`
@@ -26,9 +26,9 @@ Implement `git_repository` fetching with local cache isolation, commit and ref p
 3. Support local fixture repositories by accepting `file://` URLs and plain fixture paths in tests; all CI tests must use local repositories created from fixtures, not GitHub or another remote service.
 4. For network URLs, use only the `git` CLI and configured credentials from the environment; do not require forge API access.
 5. Resolve tracked branches, tags, and explicit commits to immutable commit SHAs before artifact discovery begins.
-6. Record `source_versions` with source ID, commit SHA, branch or tag label, repository URL, fetch timestamp, fetch status, and access, visibility, sensitivity, and license policy labels.
+6. Record `source_versions` with source ID, commit SHA, branch or tag label, repository URL, fetch timestamp, fetch status, corpus eligibility, visibility, sensitivity, and license policy labels.
 7. Build an initial version map from tags, branches, commit ancestry, and file membership where the local repository proves the relationship. When first containing version or last containing version cannot be proven, store `unknown` or `NULL`; do not guess.
-8. Record basic `source_changes` for commits reachable from the fetched refs: commit SHA, parent SHAs, author timestamp if safe, committer timestamp, sanitized commit subject, source ID, source version ID, access label, visibility label, sensitivity class, and license policy label. Until the Phase 3.7 redaction stage is available, sanitize commit subjects through the same diagnostic sanitizer used for run failures; do not persist raw commit subjects or full commit messages.
+8. Record basic `source_changes` for commits reachable from the fetched refs: commit SHA, parent SHAs, author timestamp if safe, committer timestamp, sanitized commit subject, source ID, source version ID, corpus eligibility label, visibility label, sensitivity class, and license policy label. Until the Phase 3.7 redaction stage is available, sanitize commit subjects through the same diagnostic sanitizer used for run failures; do not persist raw commit subjects or full commit messages.
 9. Treat remote forge enrichment as explicitly out of scope for this step unless credentials and a later source profile enable it; local Git data is sufficient for MVP fetch provenance.
 10. On fetch failure, update the ingestion run with sanitized command, exit code, source ID, and retryable flag, but do not log tokens, credentials, raw file contents, or raw diffs.
 

@@ -5,7 +5,7 @@ Create ingestion run records before any fetch, local filesystem scan, or extract
 
 ## Prerequisites
 - `ARCHITECTURE.md` remains the source of truth for architecture decisions in this step.
-- Phase 2 data model steps are complete, including `sources`, `source_versions`, `ingestion_runs`, access policy models, and redaction/license metadata models.
+- Phase 2 data model steps are complete, including `sources`, `source_versions`, `ingestion_runs`, corpus eligibility metadata models, and redaction/license metadata models.
 - Phase 3.1 is complete so source definitions can be loaded and validated.
 - Local Postgres starts through `mise run up`, and migrations run through `mise run db:migrate`.
 
@@ -23,7 +23,7 @@ Create ingestion run records before any fetch, local filesystem scan, or extract
 ## Implementation Instructions
 1. Add an ingestion orchestration entry point that can start a run for one source ID or all enabled sources from `config/sources.yaml`.
 2. Ensure the first durable action is inserting an `ingestion_runs` row with `status = "started"` before git commands, HTTP requests, local directory walks, discovery, extraction, redaction, chunking, embedding job creation, or retrieval indexing.
-3. Store run metadata: run ID, source ID, requested ref or version selector, started timestamp, operator or caller label when available, config file hash, extractor profile name, visibility label, sensitivity class, license policy label, and access policy label.
+3. Store run metadata: run ID, source ID, requested ref or version selector, started timestamp, operator or caller label when available, config file hash, extractor profile name, visibility label, sensitivity class, license policy label, and corpus eligibility label.
 4. Track status transitions with explicit values such as `started`, `fetching`, `discovering`, `extracting`, `redacting`, `chunking`, `persisting`, `completed`, and `failed`.
 5. Record counters for fetched artifacts, discovered artifacts, extracted artifacts, redacted candidates, persisted sanitized chunks, skipped generated files, skipped vendored files, failed artifacts, and tombstoned records.
 6. Store failure diagnostics as sanitized structured data with error type, stage, source ID, artifact locator when safe, and retryable flag; do not store raw upstream text, raw chunks, raw secret values, or full sensitive config values.
@@ -41,7 +41,7 @@ Create ingestion run records before any fetch, local filesystem scan, or extract
 
 ## Acceptance Criteria
 - Every ingestion attempt creates an `ingestion_runs` record before external or local source work begins.
-- Run metadata carries source, access, visibility, sensitivity, and license policy labels.
+- Run metadata carries source, corpus eligibility, visibility, sensitivity, and license policy labels.
 - Status, counters, timestamps, and sanitized diagnostics are updated predictably.
 - Failed runs are durable and inspectable without exposing raw unsanitized chunks or secret values.
 - CI can exercise the run lifecycle with `--dry-run` and fixture configuration only.

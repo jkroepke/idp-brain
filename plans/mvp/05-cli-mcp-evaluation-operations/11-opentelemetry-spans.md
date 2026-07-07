@@ -1,7 +1,7 @@
 # 5.11: OpenTelemetry Spans
 
 ## Goal
-Add vendor-neutral OpenTelemetry tracing for request receipt, access-context derivation, retrieval stages, MCP tools, eval runs, and optional LLM calls while keeping trace attributes sanitized.
+Add vendor-neutral OpenTelemetry tracing for request receipt, corpus eligibility derivation, retrieval stages, MCP tools, eval runs, and optional LLM calls while keeping trace attributes sanitized.
 
 ## Prerequisites
 - Steps 5.2 through 5.7 have added CLI and MCP retrieval paths.
@@ -30,7 +30,7 @@ Add vendor-neutral OpenTelemetry tracing for request receipt, access-context der
    - service name `idp-brain`.
 2. Add spans named:
    - `request.received`
-   - `access_context.derive`
+   - `corpus_eligibility.derive`
    - `query_profile.select`
    - `retrieval.exact_lookup`
    - `retrieval.bm25`
@@ -45,8 +45,8 @@ Add vendor-neutral OpenTelemetry tracing for request receipt, access-context der
    - `mcp.list_sources`
    - `eval.run`
    - `llm.call`, only when an optional LLM call exists.
-3. Use low-cardinality sanitized attributes such as query profile, source type count, requested source count, bounded result count, active index version, retrieval mode, redaction status, access-filter result, error class, and latency.
-4. Do not add raw queries, raw chunks, raw source text, secret-like values, PII, embedding vectors, SQL text, SQL parameters, provider request payloads, provider response bodies, full prompts, or hidden ACL group membership as span attributes or events.
+3. Use low-cardinality sanitized attributes such as query profile, source type count, requested source count, bounded result count, active index version, retrieval mode, redaction status, corpus eligibility filter result, error class, and latency.
+4. Do not add raw queries, raw chunks, raw source text, secret-like values, PII, embedding vectors, SQL text, SQL parameters, provider request payloads, provider response bodies, full prompts, or pre-filter eligibility details as span attributes or events.
 5. Record exceptions with sanitized error class and safe message only.
 6. Propagate correlation IDs across CLI retrieval, MCP tool calls, eval runs, retrieval events, logs, and metrics.
 7. Keep deterministic tests by using the OpenTelemetry in-memory span exporter.
@@ -62,7 +62,7 @@ Add vendor-neutral OpenTelemetry tracing for request receipt, access-context der
 - Retrieval, MCP, and eval paths emit the required OpenTelemetry spans when tracing is enabled.
 - Trace attributes and events are sanitized and bounded.
 - Tests use an in-memory exporter and pass without an external collector.
-- Observability does not change retrieval behavior or bypass access, redaction, citation, or safety rules.
+- Observability does not change retrieval behavior or bypass corpus eligibility, redaction, citation, or safety rules.
 
 ## Suggested Commit Message
 `feat: add retrieval opentelemetry spans`

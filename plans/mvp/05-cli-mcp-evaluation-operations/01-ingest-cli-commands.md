@@ -5,7 +5,7 @@ Add the documented ingestion operator commands `idp-brain ingest run` and `idp-b
 
 ## Prerequisites
 - Phase 1 CLI scaffolding is complete.
-- Phase 2 source catalog, access policy, and ingestion run persistence are complete.
+- Phase 2 source catalog, corpus eligibility metadata, and ingestion run persistence are complete.
 - Phase 3 sanitized extraction, redaction, chunking, and ingestion diagnostics are complete.
 - Phase 4 indexing can write inactive `index_versions` records without promoting them automatically.
 - `ARCHITECTURE.md` remains the source of truth for CLI behavior, ingestion stages, safety policy, and validation-only scheduled ingestion.

@@ -18,7 +18,7 @@ The first product is not a WebApp and not a generative-model fine-tuning project
 - **Local-first runtime**: PostgreSQL with pgvector and ParadeDB `pg_search` runs locally through Docker Compose.
 - **Hybrid retrieval first**: BM25 lexical search and dense vector search are both first-class retrieval paths; neither is a later add-on.
 - **Separate docs and code lanes**: documentation, source code, schemas, and generated artifacts use different extractor, chunking, embedding, and query profiles before converging in normalized metadata and fused retrieval.
-- **Thin integration layers**: MCP exposes search and fetch tools; it does not own ingestion, model serving, workflow state, or observability. Apache ACE is not part of the greenfield retrieval core.
+- **Thin integration layers**: MCP exposes search and fetch tools; it does not own ingestion, model serving, workflow state, or observability.
 
 ## Non-Goals
 
@@ -29,7 +29,6 @@ The first product is not a WebApp and not a generative-model fine-tuning project
 - No direct mutation of external systems.
 - No generative LLM fine-tuning in the initial architecture.
 - No embedding fine-tuning until baseline retrieval, evaluation data, and redaction are working.
-- No Apache ACE as the RAG backend, retrieval store, query path, workflow engine, or security boundary.
 - No "fat" MCP server that replaces the retrieval service, long-running workflow system, model server, or API gateway.
 
 ## Repository Boundary
@@ -184,8 +183,8 @@ Responsibilities:
 
 - `pg_search` owns BM25 lexical search over sanitized chunk text, symbol names, headings, paths, source metadata, and other filterable fields that need lexical ranking or pushdown.
 - pgvector owns dense retrieval over embedding columns, with separate logical indexes for documentation, source code, memory, and future model versions when needed.
-- PostgreSQL B-tree, partial, and trigram indexes support exact identifiers, filters, ACL checks, and fallback fuzzy matching.
-- The retrieval service owns fusion, reranking, ACL enforcement, provenance shaping, and diagnostics.
+- PostgreSQL B-tree, partial, and trigram indexes support exact identifiers, corpus eligibility filters, and fallback fuzzy matching.
+- The retrieval service owns fusion, reranking, corpus eligibility enforcement, provenance shaping, and diagnostics.
 
 Initial pgvector policy:
 
@@ -310,7 +309,7 @@ The `fetch` tool input schema must include:
 - optional `line_range`
 - optional `token_budget`
 
-The `search` tool returns evidence bundle summaries and citation IDs. The `fetch` tool returns sanitized evidence content for a specific citation or locator. Neither tool may return raw unsanitized chunks or bypass ACL filters. Caller-provided context is only a hint; trusted visibility and access rights are derived by the server.
+The `search` tool returns evidence bundle summaries and citation IDs. The `fetch` tool returns sanitized evidence content for a specific citation or locator. Neither tool may return raw unsanitized chunks or bypass corpus eligibility filters. Caller-provided context is only a hint; trusted source scope, license policy, sensitivity policy, redaction status, and version scope are derived by the server.
 
 Optional Phase 6 CLI commands:
 
@@ -319,14 +318,6 @@ idp-brain eval synthesize
 idp-brain embeddings tune
 idp-brain embeddings compare
 ```
-
-### Apache ACE Position
-
-Apache ACE is not a greenfield backend for this project. It is not the retrieval store, query service, orchestration engine, model server, MCP server, or primary authentication layer.
-
-If a legacy environment requires ACE, it is allowed only as an optional provisioning or control-plane adapter for edge connectors, parser bundles, or OSGi-related agents. That adapter must be outside the online retrieval path and behind the same modern gateway, network segmentation, OAuth/OIDC policy, secret management, and audit controls as any other legacy integration.
-
-ACE integration is not part of the MVP. It can be considered only after the PostgreSQL, ParadeDB `pg_search`, pgvector, evaluation, and security gates are working.
 
 ### Extraction And Validation Tools
 
@@ -383,7 +374,7 @@ Required configuration:
 - `config/retrieval.yaml`: retrieval, ranking, and embedding settings.
 - `config/evaluation.yaml`: retrieval evaluation and optional embedding fine-tuning settings.
 - `config/security.yaml`: redaction, source allowlist, and prompt-injection handling rules.
-- `config/access.yaml`: source visibility labels, groups, principals, and retrieval ACL policy.
+- `config/corpus.yaml`: corpus eligibility defaults for source allowlists, visibility labels, sensitivity labels, and license policy labels. It does not define per-caller retrieval rules in the MVP.
 - `config/memory.yaml`: memory scopes, retention, promotion rules, and retrieval influence limits.
 
 `config/sources.yaml` defines each source:
@@ -398,7 +389,6 @@ Required configuration:
 - extractor profile
 - source priority
 - visibility label
-- allowed groups or principals
 - sensitivity class
 - license policy
 - refresh cadence
@@ -530,7 +520,7 @@ Memory rules:
 
 - Memory writes require explicit promotion from a conversation, evaluation result, or operator action.
 - Untrusted source text cannot write memory.
-- Memory is subject to redaction, ACLs, and retention policy.
+- Memory is subject to redaction, corpus eligibility, and retention policy.
 - Memory can affect query expansion, source ranking, and tool behavior.
 - Memory cannot override higher-authority source evidence.
 - Memory items must be inspectable, editable, and deletable.
@@ -570,8 +560,8 @@ Lineage is evidence, not guesswork. If the pipeline cannot prove the first conta
 The RAG pipeline has ten stages. Each stage writes normalized records and diagnostics so failures can be replayed without guessing which tool produced which output.
 
 1. **Receive**
-   - Tools: Pydantic settings, `config/sources.yaml`, `config/extractors.yaml`, `config/access.yaml`, Typer CLI.
-   - Read source definitions, extractor profiles, access policy, and refresh policy.
+   - Tools: Pydantic settings, `config/sources.yaml`, `config/extractors.yaml`, `config/corpus.yaml`, Typer CLI.
+   - Read source definitions, extractor profiles, corpus eligibility policy, and refresh policy.
    - Resolve refs, tags, release artifacts, and local source paths.
    - Create an `ingestion_runs` record before network or filesystem work begins.
 
@@ -600,7 +590,7 @@ The RAG pipeline has ten stages. Each stage writes normalized records and diagno
    - Tools: configured regex rules, Gitleaks or detect-secrets, Microsoft Presidio, source allowlist policy, license policy.
    - Detect secret-like values, credentials, tokens, PII, and configured sensitive patterns.
    - Redact before chunking, embedding, persistence, retrieval logs, evaluation data, or LLM context assembly.
-   - Assign sensitivity labels, visibility labels, license policy labels, and access labels.
+   - Assign sensitivity labels, visibility labels, license policy labels, redaction status, and source allowlist status.
    - Store redaction markers and counts, not raw secret or PII values.
 
 6. **Normalize**
@@ -626,7 +616,7 @@ The RAG pipeline has ten stages. Each stage writes normalized records and diagno
 
 9. **Retrieve**
    - Tools: PostgreSQL exact indexes, PostgreSQL B-tree/partial/trigram indexes, ParadeDB `pg_search`, pgvector, rank fusion, reranker service.
-   - Apply trusted ACL, source allowlist, sensitivity, and version filters before every subquery.
+   - Apply source allowlist, license, sensitivity, redaction, version, and active-index filters before every subquery.
    - Run exact lookup for identifiers, symbols, paths, versions, fields, endpoint paths, and error strings.
    - Run BM25 candidate generation through `pg_search`.
    - Run dense candidate generation through pgvector exact search, HNSW, or configured IVFFlat indexes.
@@ -641,7 +631,7 @@ The RAG pipeline has ten stages. Each stage writes normalized records and diagno
    - Compare BM25-only, vector-only, exact-only, and fused hybrid retrieval.
    - Generate synthetic query-context pairs only from approved chunks and only as evaluation or training data.
    - Fine-tune embeddings only as an experiment after baseline retrieval and held-out thresholds prove the need.
-   - Promote a tuned embedding model only when held-out metrics improve without redaction, freshness, citation, ACL, or lineage regressions.
+   - Promote a tuned embedding model only when held-out metrics improve without redaction, freshness, citation, corpus eligibility, or lineage regressions.
 
 ## Data Model
 
@@ -656,7 +646,7 @@ Core tables:
 - `artifact_versions`: mapping from artifacts to versions, tags, releases, and first/last membership.
 - `chunk_versions`: mapping from retrievable chunks to versions, tags, releases, and first/last membership.
 - `fact_versions`: first seen version, last seen version, and current version membership for extracted facts.
-- `access_policies`: visibility labels, allowed groups/principals, and source/chunk filters.
+- `corpus_policy_defaults`: configured global retrieval eligibility defaults for invited users. This table does not model per-caller visibility.
 - `redaction_events`: redaction rule matches, marker counts, and affected artifact/chunk IDs without raw secret values.
 - `ingestion_runs`: one record per pipeline run.
 - `artifacts`: discovered files, schemas, specs, docs, examples, and generated artifacts.
@@ -724,7 +714,7 @@ Every memory item must include:
 - memory ID
 - scope
 - type
-- owner or project identity
+- owner or project label
 - visibility label
 - sensitivity class
 - provenance
@@ -749,9 +739,9 @@ Query profiles are selected before candidate generation:
 Retrieval stages:
 
 1. Parse query intent, query profile, source scope, version scope, and hard filters.
-2. Derive trusted access context from local configuration, session identity, or operator policy.
-3. Apply source allowlists, ACL filters, and sensitivity filters to every subquery.
-4. Load relevant memory items allowed by the same access context.
+2. Derive trusted corpus eligibility from local configuration and stored source metadata. Caller hints never expand retrieval scope.
+3. Apply source allowlist, license, sensitivity, redaction, version, and active-index filters to every subquery.
+4. Load relevant memory items allowed by the same corpus eligibility rules.
 5. Run exact lookup for names, symbols, versions, field names, endpoint paths, errors, paths, and identifiers using B-tree, partial, and trigram indexes.
 6. Run ParadeDB BM25 search with `pg_search` over the profile-specific BM25 fields.
 7. Run pgvector similarity search:
@@ -774,7 +764,7 @@ Retrieval stages:
 
 The retriever must expose why a chunk was selected. Debug output should include score components, rank positions, source metadata, filters applied, index path used, query profile, active index version, and competing candidates. BM25 scores and vector distances must not be compared directly without rank fusion or calibration.
 
-Reranking is a separate service call, not a database concern. The default local rerankers are BGE reranker v2 m3 or Jina Reranker v2 multilingual. Reranking receives only sanitized candidate text and metadata that has passed access checks.
+Reranking is a separate service call, not a database concern. The default local rerankers are BGE reranker v2 m3 or Jina Reranker v2 multilingual. Reranking receives only sanitized candidate text and metadata that has passed corpus eligibility checks.
 
 ## Embedding Tuning Policy
 
@@ -813,7 +803,7 @@ Each evidence bundle contains:
 - source authority ranking
 - freshness metadata
 - conflict markers
-- access-filter result
+- corpus eligibility filter result
 - redaction status
 - token budget estimate
 
@@ -843,11 +833,11 @@ Rules:
 - License detection runs during ingestion and writes policy status into metadata before chunks become retrievable.
 - Raw fetched files may exist only in local ingestion cache storage and must be deletable without data loss.
 - Source allowlists are enforced before retrieval.
-- ACL filters run before LLM context assembly.
-- Access labels are stored on sources, artifacts, chunks, claims, and citations.
+- License, sensitivity, redaction, version, and active-index filters run before LLM context assembly.
+- Corpus eligibility labels are stored on sources, artifacts, chunks, claims, and citations.
 - License policy labels are stored on sources, artifacts, chunks, claims, and citations.
 - Memory writes require explicit promotion and audit events.
-- Memory retrieval uses the same ACL and redaction policy as source retrieval.
+- Memory retrieval uses the same corpus eligibility and redaction policy as source retrieval.
 - Documentation, examples, and comments are treated as untrusted input.
 - Prompt-injection-like text in sources is stored as data, never obeyed as instruction.
 - Retrieval logs must not leak secrets or full sensitive chunks.
@@ -859,7 +849,7 @@ Observability is vendor-neutral and starts with OpenTelemetry.
 Required spans:
 
 - request receipt
-- access-context derivation
+- corpus eligibility derivation
 - query profile selection
 - exact lookup
 - ParadeDB BM25 retrieval
@@ -1027,7 +1017,7 @@ Release gates:
 ### Phase 2: Generic Ingestion
 
 - Implement source catalog loading.
-- Implement access policy loading.
+- Implement corpus eligibility policy loading.
 - Implement git repository fetcher.
 - Implement artifact discovery.
 - Store source versions, artifacts, and ingestion runs.
@@ -1062,7 +1052,7 @@ Release gates:
 - Add security/redaction tests.
 - Add PII and license-policy tests.
 - Add explicit memory promotion, listing, expiry, deletion, and audit events.
-- Add memory-aware retrieval reranking guarded by ACL and retention policy.
+- Add memory-aware retrieval reranking guarded by corpus eligibility and retention policy.
 
 ### Phase 6: Optional Embedding Tuning
 
@@ -1072,13 +1062,6 @@ Release gates:
 - Fine-tune local embeddings as an experiment.
 - Promote tuned embeddings only when held-out metrics improve and safety gates pass.
 
-### Phase 7: Optional Legacy ACE Adapter
-
-- Add only if a legacy environment requires ACE.
-- Use ACE only for provisioning or control-plane distribution of edge connectors, parser bundles, or OSGi-related agents.
-- Keep ACE outside the online retrieval path.
-- Keep modern gateway, OAuth/OIDC, mTLS where required, secret management, and audit policy outside ACE.
-
 ## Findings Addressed
 
 The architecture is intentionally focused on the RAG receiver, pipeline, and retriever. Tool-specific intelligence is data, not architecture. A platform-tool catalog can be added later through configuration, but the core must remain useful for any source-backed technical tooling domain.
@@ -1087,14 +1070,13 @@ The review findings are resolved as architecture constraints:
 
 | Finding | Architecture response |
 | --- | --- |
-| Keep the first milestone narrow. | The first useful milestone is sanitized ingestion, citations, ACL-safe exact/BM25/vector retrieval, MCP `search` and `fetch`, and retrieval fixtures. Memory, fine-tuning, ACE, advanced workflows, and answer generation are later or optional. |
+| Keep the first milestone narrow. | The first useful milestone is sanitized ingestion, citations, corpus-safe exact/BM25/vector retrieval, MCP `search` and `fetch`, and retrieval fixtures. Memory, fine-tuning, advanced workflows, and answer generation are later or optional. |
 | Make ParadeDB `pg_search` + pgvector the target retrieval store. | PostgreSQL 18 with `pg_search`, pgvector, and `pg_trgm` is the named target. BM25 and vector indexes are migration-managed derived indexes over relational records. Extension, BM25, and HNSW smoke tests are required locally and in CI. |
 | Verify custom image and extension compatibility. | The local runtime must use an approved or repository-owned image that can create `vector`, `pg_search`, and `pg_trgm`, then create fixture BM25 and HNSW indexes before the service is considered healthy. |
-| Enforce ACL, source allowlist, and sensitivity filters before every query. | Retrieval stages apply trusted access, source, sensitivity, license, and version filters before exact lookup, BM25, vector search, relationship traversal, memory lookup, diagnostics, and MCP `fetch`. |
-| Do not trust caller-provided MCP context. | MCP `caller_context_hint` is only a hint. Access context is derived from trusted local configuration, session identity, or operator policy. |
+| Enforce corpus eligibility filters before every query. | Retrieval stages apply source allowlist, sensitivity, license, redaction, version, and active-index filters before exact lookup, BM25, vector search, relationship traversal, memory lookup, diagnostics, and MCP `fetch`. |
+| Do not trust caller-provided MCP context. | MCP `caller_context_hint` is only a hint. Corpus eligibility is derived from trusted local configuration and stored source metadata. |
 | Return sanitized evidence only. | MCP and CLI return evidence bundle summaries, citation IDs, sanitized excerpts, and diagnostics. Raw unsanitized chunks are never returned, embedded, logged, or sent to rerankers or LLMs. |
 | Limit claim/conflict detection until comparator rules exist. | Claims are produced only by structured extractors. Conflict detection is limited to normalized subject, predicate, value, and overlapping scope with explicit comparator rules. |
 | Do not infer unknown version lineage. | First/last containing versions are evidence-backed fields. Unknown lineage remains unknown and is exposed as such in retrieval results. |
 | Keep GitHub Actions validation-first while the durable database is local-only. | Actions run lint, tests, migrations, extension smoke tests, ingestion validation, and evals against ephemeral databases. Scheduled ingestion snapshots require explicit export/import, encryption, retention, restore checks, and index promotion rules. |
 | Define fixtures and thresholds before release-blocking gates. | `config/evaluation.yaml` must define metric thresholds before gates block a release. Until then, evaluation output is diagnostic. |
-| Keep ACE out of greenfield RAG. | ACE is excluded from the MVP and from the online retrieval path. If legacy constraints require it, ACE is only an optional provisioning/control-plane adapter for edge components and remains behind modern security controls. |
