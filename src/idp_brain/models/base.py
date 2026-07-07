@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, MetaData, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, MetaData, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 JsonDict = dict[str, Any]
@@ -85,9 +85,14 @@ class SourceProvenanceMixin:
     extractor_name: Mapped[str | None] = mapped_column(String(255))
     extractor_version: Mapped[str | None] = mapped_column(String(255))
     extractor_profile: Mapped[str | None] = mapped_column(String(255))
+    source_allowlisted: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
     visibility_label: Mapped[str] = mapped_column(
         String(100),
-        default="public",
+        default="invited_users",
         nullable=False,
     )
     sensitivity_class: Mapped[str] = mapped_column(
@@ -95,9 +100,15 @@ class SourceProvenanceMixin:
         default="unknown",
         nullable=False,
     )
+    license_policy_status: Mapped[str] = mapped_column(
+        String(100),
+        default="unknown",
+        nullable=False,
+    )
+    license_id: Mapped[str | None] = mapped_column(String(100))
     redaction_status: Mapped[str] = mapped_column(
         String(100),
-        default="not_redacted",
+        default="unknown",
         nullable=False,
     )
     first_seen_at: Mapped[datetime] = mapped_column(

@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -19,6 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from idp_brain.models.base import Base, SourceProvenanceMixin, new_id, utc_now
+from idp_brain.models.policy import corpus_eligibility_constraints
 
 RELATIONSHIP_TYPES: Final[tuple[str, ...]] = (
     "contains",
@@ -43,7 +45,21 @@ class Relationship(SourceProvenanceMixin, Base):
     __tablename__ = "relationships"
     __table_args__ = (
         UniqueConstraint("source_id", "relationship_key"),
+        Index(
+            "ix_relationships_filter_pushdown",
+            "source_id",
+            "source_version_id",
+            "source_allowlisted",
+            "visibility_label",
+            "sensitivity_class",
+            "license_policy_status",
+            "redaction_status",
+            "version_label",
+        ),
+        Index("ix_relationships_primary_citation_id", "primary_citation_id"),
+        Index("ix_relationships_license_id", "license_id"),
         CheckConstraint(RELATIONSHIP_TYPE_CHECK, name="relationship_type_valid"),
+        *corpus_eligibility_constraints("relationships"),
     )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
@@ -69,7 +85,16 @@ class RelationshipVersion(Base):
     """Version membership and known lineage for a relationship."""
 
     __tablename__ = "relationship_versions"
-    __table_args__ = (UniqueConstraint("relationship_id", "source_version_id"),)
+    __table_args__ = (
+        UniqueConstraint("relationship_id", "source_version_id"),
+        Index(
+            "ix_relationship_versions_active_version_filter",
+            "relationship_id",
+            "source_version_id",
+            "version_label",
+            "is_current",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
     relationship_id: Mapped[str] = mapped_column(

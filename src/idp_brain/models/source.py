@@ -10,6 +10,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -18,13 +19,29 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from idp_brain.models.base import Base, TimestampMixin, new_id, utc_now
+from idp_brain.models.policy import (
+    CorpusEligibilityMixin,
+    corpus_eligibility_constraints,
+)
 
 
-class Source(TimestampMixin, Base):
+class Source(CorpusEligibilityMixin, TimestampMixin, Base):
     """Configured upstream source definition."""
 
     __tablename__ = "sources"
-    __table_args__ = (UniqueConstraint("config_key"),)
+    __table_args__ = (
+        UniqueConstraint("config_key"),
+        Index(
+            "ix_sources_filter_pushdown",
+            "source_allowlisted",
+            "visibility_label",
+            "sensitivity_class",
+            "license_policy_status",
+            "redaction_status",
+        ),
+        Index("ix_sources_license_id", "license_id"),
+        *corpus_eligibility_constraints("sources"),
+    )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
     config_key: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -35,23 +52,28 @@ class Source(TimestampMixin, Base):
     artifact_url: Mapped[str | None] = mapped_column(String(2048))
     default_branch: Mapped[str | None] = mapped_column(String(255))
     authority_rank: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
-    visibility_label: Mapped[str] = mapped_column(
-        String(100),
-        default="public",
-        nullable=False,
-    )
-    sensitivity_class: Mapped[str] = mapped_column(
-        String(100),
-        default="unknown",
-        nullable=False,
-    )
 
 
-class SourceVersion(TimestampMixin, Base):
+class SourceVersion(CorpusEligibilityMixin, TimestampMixin, Base):
     """Resolved upstream version, release, commit, or artifact checksum."""
 
     __tablename__ = "source_versions"
-    __table_args__ = (UniqueConstraint("source_id", "version_label"),)
+    __table_args__ = (
+        UniqueConstraint("source_id", "version_label"),
+        Index(
+            "ix_source_versions_filter_pushdown",
+            "source_id",
+            "version_label",
+            "source_allowlisted",
+            "visibility_label",
+            "sensitivity_class",
+            "license_policy_status",
+            "redaction_status",
+            "is_current",
+        ),
+        Index("ix_source_versions_license_id", "license_id"),
+        *corpus_eligibility_constraints("source_versions"),
+    )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
     source_id: Mapped[str] = mapped_column(

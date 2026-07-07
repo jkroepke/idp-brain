@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -20,13 +21,31 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from idp_brain.models.base import Base, SourceProvenanceMixin, new_id, utc_now
+from idp_brain.models.policy import corpus_eligibility_constraints
 
 
 class Chunk(SourceProvenanceMixin, Base):
     """Retrievable sanitized text, code, or schema chunk."""
 
     __tablename__ = "chunks"
-    __table_args__ = (UniqueConstraint("source_id", "chunk_key"),)
+    __table_args__ = (
+        UniqueConstraint("source_id", "chunk_key"),
+        Index(
+            "ix_chunks_filter_pushdown",
+            "source_id",
+            "source_version_id",
+            "source_allowlisted",
+            "visibility_label",
+            "sensitivity_class",
+            "license_policy_status",
+            "redaction_status",
+            "artifact_path",
+            "language",
+            "version_label",
+        ),
+        Index("ix_chunks_license_id", "license_id"),
+        *corpus_eligibility_constraints("chunks"),
+    )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
     chunk_key: Mapped[str] = mapped_column(String(1024), nullable=False)
@@ -55,7 +74,16 @@ class ChunkVersion(Base):
     """Version membership and known lineage for a sanitized chunk."""
 
     __tablename__ = "chunk_versions"
-    __table_args__ = (UniqueConstraint("chunk_id", "source_version_id"),)
+    __table_args__ = (
+        UniqueConstraint("chunk_id", "source_version_id"),
+        Index(
+            "ix_chunk_versions_active_version_filter",
+            "chunk_id",
+            "source_version_id",
+            "version_label",
+            "is_current",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
     chunk_id: Mapped[str] = mapped_column(
@@ -96,12 +124,26 @@ class Citation(SourceProvenanceMixin, Base):
     __tablename__ = "citations"
     __table_args__ = (
         UniqueConstraint("citation_key"),
+        Index(
+            "ix_citations_filter_pushdown",
+            "source_id",
+            "source_version_id",
+            "source_allowlisted",
+            "visibility_label",
+            "sensitivity_class",
+            "license_policy_status",
+            "redaction_status",
+            "version_label",
+        ),
+        Index("ix_citations_chunk_id", "chunk_id"),
+        Index("ix_citations_license_id", "license_id"),
         CheckConstraint(
             "(line_start IS NULL AND line_end IS NULL) OR "
             "(line_start IS NOT NULL AND line_end IS NOT NULL "
             "AND line_start <= line_end)",
             name="line_range_order",
         ),
+        *corpus_eligibility_constraints("citations"),
     )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
@@ -121,7 +163,23 @@ class Fact(SourceProvenanceMixin, Base):
     """Structured fact emitted by an extractor before claim normalization."""
 
     __tablename__ = "facts"
-    __table_args__ = (UniqueConstraint("source_id", "fact_key"),)
+    __table_args__ = (
+        UniqueConstraint("source_id", "fact_key"),
+        Index(
+            "ix_facts_filter_pushdown",
+            "source_id",
+            "source_version_id",
+            "source_allowlisted",
+            "visibility_label",
+            "sensitivity_class",
+            "license_policy_status",
+            "redaction_status",
+            "version_label",
+        ),
+        Index("ix_facts_primary_citation_id", "primary_citation_id"),
+        Index("ix_facts_license_id", "license_id"),
+        *corpus_eligibility_constraints("facts"),
+    )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
     fact_key: Mapped[str] = mapped_column(String(1024), nullable=False)
@@ -153,7 +211,16 @@ class FactVersion(Base):
     """Version membership and known lineage for an extracted fact."""
 
     __tablename__ = "fact_versions"
-    __table_args__ = (UniqueConstraint("fact_id", "source_version_id"),)
+    __table_args__ = (
+        UniqueConstraint("fact_id", "source_version_id"),
+        Index(
+            "ix_fact_versions_active_version_filter",
+            "fact_id",
+            "source_version_id",
+            "version_label",
+            "is_current",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
     fact_id: Mapped[str] = mapped_column(

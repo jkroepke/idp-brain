@@ -47,6 +47,7 @@ EXPECTED_TABLES = {
     "chunks",
     "chunk_versions",
     "citations",
+    "corpus_policy_defaults",
 }
 
 

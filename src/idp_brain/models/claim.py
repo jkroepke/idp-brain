@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -20,6 +21,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from idp_brain.models.base import Base, SourceProvenanceMixin, new_id, utc_now
+from idp_brain.models.policy import corpus_eligibility_constraints
 
 
 class Claim(SourceProvenanceMixin, Base):
@@ -28,10 +30,24 @@ class Claim(SourceProvenanceMixin, Base):
     __tablename__ = "claims"
     __table_args__ = (
         UniqueConstraint("source_id", "claim_key"),
+        Index(
+            "ix_claims_filter_pushdown",
+            "source_id",
+            "source_version_id",
+            "source_allowlisted",
+            "visibility_label",
+            "sensitivity_class",
+            "license_policy_status",
+            "redaction_status",
+            "version_label",
+        ),
+        Index("ix_claims_primary_citation_id", "primary_citation_id"),
+        Index("ix_claims_license_id", "license_id"),
         CheckConstraint(
             "confidence >= 0.0 AND confidence <= 1.0",
             name="confidence_range",
         ),
+        *corpus_eligibility_constraints("claims"),
     )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
@@ -57,7 +73,16 @@ class ClaimVersion(Base):
     """Version membership and known lineage for a normalized claim."""
 
     __tablename__ = "claim_versions"
-    __table_args__ = (UniqueConstraint("claim_id", "source_version_id"),)
+    __table_args__ = (
+        UniqueConstraint("claim_id", "source_version_id"),
+        Index(
+            "ix_claim_versions_active_version_filter",
+            "claim_id",
+            "source_version_id",
+            "version_label",
+            "is_current",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
     claim_id: Mapped[str] = mapped_column(
