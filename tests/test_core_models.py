@@ -48,6 +48,9 @@ EXPECTED_TABLES = {
     "chunk_versions",
     "citations",
     "corpus_policy_defaults",
+    "redaction_events",
+    "license_findings",
+    "retrieval_events",
 }
 
 
@@ -381,10 +384,7 @@ def test_core_metadata_declares_only_phase_tables() -> None:
         "embedding_jobs",
         "embedding_models",
         "access_policies",
-        "redaction_events",
-        "license_findings",
         "memory_items",
-        "retrieval_events",
         "index_versions",
     }
     assert set(Base.metadata.tables).isdisjoint(excluded_tables)
