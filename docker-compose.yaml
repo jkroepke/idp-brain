@@ -1,3 +1,4 @@
+---
 # Local-only runtime for idp-brain development.
 #
 # ParadeDB publishes PostgreSQL-version-specific images that include pg_search.

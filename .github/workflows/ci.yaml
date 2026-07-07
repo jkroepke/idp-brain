@@ -1,6 +1,7 @@
+---
 name: CI
 
-on:
+"on":
   pull_request:
   push:
     branches:
@@ -9,7 +10,8 @@ on:
 env:
   IDP_BRAIN_EXTERNAL_MODEL_CALLS_ENABLED: "false"
   IDP_BRAIN_EMBEDDING_PROVIDER: "mock"
-  IDP_BRAIN_DATABASE_URL: "postgresql+psycopg://idp_brain:idp_brain@localhost:55432/idp_brain"
+  IDP_BRAIN_DATABASE_URL: >-
+    postgresql+psycopg://idp_brain:idp_brain@localhost:55432/idp_brain
 
 permissions:
   contents: read
