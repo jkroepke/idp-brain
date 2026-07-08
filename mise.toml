@@ -62,6 +62,7 @@ mise run test
 postgres_started=1
 mise run up
 mise run db:migrate
+mise run db:check
 mise run test:integration
 '''
 
@@ -77,16 +78,33 @@ run = "docker compose down"
 description = "Apply database migrations"
 run = "uv run alembic upgrade head"
 
+[tasks."db:current"]
+description = "Print the current database migration revision"
+run = "uv run alembic current"
+
+[tasks."db:history"]
+description = "Show database migration history"
+run = "uv run alembic history"
+
+[tasks."db:check"]
+description = "Validate required extensions and Phase 2 tables"
+run = "uv run idp-brain db check"
+
 [tasks."test:integration"]
 description = "Run database-backed integration tests"
-run = "uv run pytest -m integration tests/integration"
+run = "uv run pytest -m integration tests/integration tests/test_migration_upgrade.py tests/test_schema_safety_contracts.py"
 
 [tasks."db:reset"]
-description = "Reset the local database"
+description = "Reset the disposable local Docker Compose database"
 run = '''
 #!/usr/bin/env sh
-echo 'Task db:reset is intentionally deferred; no destructive reset is implemented.' >&2
-exit 1
+set -eu
+
+uv run idp-brain db assert-local-reset-target
+docker compose down --volumes --remove-orphans
+docker compose up --build --wait --wait-timeout 120 postgres
+uv run alembic upgrade head
+uv run idp-brain db check
 '''
 
 [tasks.ingest]
