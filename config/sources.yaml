@@ -16,6 +16,7 @@ sources:
     extractor_profile: docs_markdown_html
     source_priority: 50
     visibility_label: public
+    corpus_eligibility: default_retrievable
     allowed_groups:
       - developers
       - ci
@@ -39,7 +40,8 @@ sources:
       - "**/*.pyc"
     extractor_profile: source_code
     source_priority: 80
-    visibility_label: internal
+    visibility_label: invited_users
+    corpus_eligibility: default_retrievable
     allowed_groups:
       - developers
       - ci
@@ -63,14 +65,15 @@ sources:
       - "**/*token*"
     extractor_profile: structured_config
     source_priority: 60
-    visibility_label: internal
+    visibility_label: invited_users
+    corpus_eligibility: default_retrievable
     allowed_groups:
       - developers
       - ci
     allowed_principals:
       - service:ci
     sensitivity_class: internal
-    license_policy: allowed
+    license_policy: review_required
     refresh_cadence: manual
     enabled: true
 
@@ -88,6 +91,7 @@ sources:
     extractor_profile: openapi_specs
     source_priority: 70
     visibility_label: internal
+    corpus_eligibility: review_required
     allowed_groups:
       - developers
     allowed_principals: []
@@ -112,6 +116,7 @@ sources:
     extractor_profile: structured_config
     source_priority: 65
     visibility_label: internal
+    corpus_eligibility: review_required
     allowed_groups:
       - developers
     allowed_principals: []
@@ -135,12 +140,37 @@ sources:
       - "**/*confidential*"
     extractor_profile: rich_documents
     source_priority: 30
-    visibility_label: restricted
+    visibility_label: invited_users
+    corpus_eligibility: excluded
     allowed_groups:
       - docs-admins
     allowed_principals: []
     sensitivity_class: confidential
-    license_policy: restricted
+    license_policy: review_required
+    refresh_cadence: manual
+    enabled: false
+
+  - source_id: local-fixture-docs
+    source_type: local_directory
+    local_path: tests/fixtures/local_directory/docs
+    tracked_refs:
+      - local-snapshot
+    version_strategy: snapshot
+    include_paths:
+      - "**/*.md"
+      - "**/*.json"
+    exclude_paths:
+      - "**/*secret*"
+    extractor_profile: docs_markdown_html
+    source_priority: 25
+    visibility_label: invited_users
+    corpus_eligibility: review_required
+    allowed_groups:
+      - developers
+    allowed_principals:
+      - service:ci
+    sensitivity_class: public
+    license_policy: review_required
     refresh_cadence: manual
     enabled: false
 
@@ -161,6 +191,32 @@ sources:
     extractor_profile: repository_digest_fallback
     source_priority: 10
     visibility_label: internal
+    corpus_eligibility: review_required
+    allowed_groups:
+      - developers
+    allowed_principals: []
+    sensitivity_class: internal
+    license_policy: review_required
+    refresh_cadence: manual
+    enabled: false
+
+  - source_id: local-git-repository-example
+    source_type: git_repository
+    url: .
+    tracked_refs:
+      - HEAD
+    version_strategy: explicit_refs
+    include_paths:
+      - README.md
+      - src/**/*.py
+    exclude_paths:
+      - .git/**
+      - .idp-brain-cache/**
+      - "**/__pycache__/**"
+    extractor_profile: source_code
+    source_priority: 20
+    visibility_label: invited_users
+    corpus_eligibility: review_required
     allowed_groups:
       - developers
     allowed_principals: []

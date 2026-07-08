@@ -30,6 +30,7 @@ from idp_brain.config.models import (
     SecurityConfig,
     SourcesConfig,
 )
+from idp_brain.config.sources import format_config_error
 
 __all__ = [
     "AccessConfig",
@@ -47,6 +48,7 @@ __all__ = [
     "RetrievalConfig",
     "SecurityConfig",
     "SourcesConfig",
+    "format_config_error",
     "load_access_config",
     "load_config_dir",
     "load_evaluation_config",

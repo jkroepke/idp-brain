@@ -1,0 +1,67 @@
+---
+config_version: 1
+kind: sources
+sources:
+  - source_id: fixture-docs
+    source_type: documentation_file
+    local_path: docs/guide.md
+    tracked_refs:
+      - v1
+    version_strategy: explicit_refs
+    include_paths:
+      - docs/guide.md
+    exclude_paths:
+      - "**/*secret*"
+    extractor_profile: docs_markdown_html
+    source_priority: 40
+    visibility_label: public
+    corpus_eligibility: default_retrievable
+    allowed_groups:
+      - developers
+    allowed_principals: []
+    sensitivity_class: public
+    license_policy: allowed
+    refresh_cadence: manual
+    enabled: true
+  - source_id: fixture-local-tree
+    source_type: local_directory
+    local_path: src
+    tracked_refs: []
+    version_strategy: snapshot
+    include_paths:
+      - "**/*.py"
+    exclude_paths:
+      - "**/__pycache__/**"
+    extractor_profile: source_code
+    source_priority: 30
+    visibility_label: invited_users
+    corpus_eligibility: review_required
+    allowed_groups:
+      - developers
+    allowed_principals: []
+    sensitivity_class: internal
+    license_policy: review_required
+    refresh_cadence: daily
+    enabled: false
+  - source_id: fixture-local-docs
+    source_type: local_directory
+    local_path: tests/fixtures/local_directory/docs
+    tracked_refs:
+      - local-snapshot
+    version_strategy: snapshot
+    include_paths:
+      - "**/*.md"
+      - "**/*.json"
+    exclude_paths:
+      - "**/*secret*"
+    extractor_profile: docs_markdown_html
+    source_priority: 25
+    visibility_label: invited_users
+    corpus_eligibility: review_required
+    allowed_groups:
+      - developers
+    allowed_principals: []
+    sensitivity_class: public
+    license_policy: review_required
+    refresh_cadence: manual
+    enabled: false

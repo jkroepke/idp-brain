@@ -1,0 +1,23 @@
+---
+config_version: 1
+kind: sources
+sources:
+  - source_id: bad-secret-source
+    source_type: private_wiki
+    url: https://example.invalid/docs?token=super-secret-token
+    tracked_refs:
+      - main
+    version_strategy: explicit_refs
+    include_paths:
+      - "**/*.md"
+    exclude_paths: []
+    extractor_profile: docs_markdown_html
+    source_priority: 10
+    visibility_label: internal
+    allowed_groups:
+      - developers
+    allowed_principals: []
+    sensitivity_class: internal
+    license_policy: allowed
+    refresh_cadence: manual
+    enabled: true
