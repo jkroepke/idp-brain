@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from idp_brain.config import ConfigBundle, load_config_dir
+from idp_brain.models.policy import LICENSE_POLICY_STATUSES, VISIBILITY_LABELS
 
 EXPECTED_QUERY_PROFILES = {
     "docs_qa",
@@ -104,9 +105,26 @@ def test_source_access_labels_and_policies_are_present(
         assert source.include_paths
         assert source.exclude_paths
         assert source.allowed_groups or source.allowed_principals
+        assert source.corpus_eligibility
         assert source.visibility_label in visibility_labels
         assert source.sensitivity_class in sensitivity_labels
         assert source.license_policy in license_labels
+
+
+def test_example_local_directory_sources_use_schema_safe_policy_labels(
+    bundle: ConfigBundle,
+) -> None:
+    local_directory_sources = [
+        source
+        for source in bundle.sources.sources
+        if source.source_type == "local_directory"
+    ]
+
+    assert local_directory_sources
+    for source in local_directory_sources:
+        assert source.visibility_label in VISIBILITY_LABELS
+        assert source.license_policy in LICENSE_POLICY_STATUSES
+        assert source.license_policy != "allowed"
 
 
 def test_required_retrieval_query_profiles_are_configured(
