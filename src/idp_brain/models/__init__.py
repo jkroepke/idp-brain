@@ -3,8 +3,15 @@
 from idp_brain.models.artifact import Artifact, ArtifactExtraction, ArtifactVersion
 from idp_brain.models.base import Base
 from idp_brain.models.claim import Claim, ClaimConflict, ClaimVersion
+from idp_brain.models.embedding import Embedding, EmbeddingJob, EmbeddingModel
 from idp_brain.models.events import RetrievalEvent
 from idp_brain.models.evidence import Chunk, ChunkVersion, Citation, Fact, FactVersion
+from idp_brain.models.indexing import IndexVersion
+from idp_brain.models.ingestion import (
+    INGESTION_COUNTER_KEYS,
+    IngestionRunStatus,
+    empty_ingestion_counters,
+)
 from idp_brain.models.license import LicenseFinding
 from idp_brain.models.policy import (
     ALLOWED_RETRIEVABLE_LICENSE_IDS,
@@ -49,9 +56,15 @@ __all__ = [
     "DEFAULT_SENSITIVITY_CLASS",
     "DEFAULT_SOURCE_ALLOWLISTED",
     "DEFAULT_VISIBILITY_LABEL",
+    "Embedding",
+    "EmbeddingJob",
+    "EmbeddingModel",
     "Fact",
     "FactVersion",
+    "IndexVersion",
+    "INGESTION_COUNTER_KEYS",
     "IngestionRun",
+    "IngestionRunStatus",
     "LicenseFinding",
     "Relationship",
     "RelationshipVersion",
@@ -61,4 +74,5 @@ __all__ = [
     "Source",
     "SourceChange",
     "SourceVersion",
+    "empty_ingestion_counters",
 ]

@@ -9,12 +9,20 @@ requires-python = ">=3.14,<3.15"
 dynamic = ["version"]
 dependencies = [
     "alembic>=1.18.5,<2",
+    "beautifulsoup4>=4.14.2,<5",
+    "jsonschema>=4.25.1,<5",
+    "lxml>=6.0.2,<7",
+    "markdown-it-py>=4.0.0,<5",
+    "openapi-spec-validator>=0.8.0b1,<0.9",
     "pydantic>=2.13.4,<3",
     "pydantic-settings>=2.14.2,<3",
     "psycopg>=3.3.4,<4",
+    "pgvector>=0.4,<0.5",
     "PyYAML>=6.0.3,<7",
     "rich>=15.0.0,<16",
     "sqlalchemy>=2.0.51,<3",
+    "tree-sitter>=0.25.2,<0.26",
+    "tree-sitter-python>=0.25.0,<0.26",
     "typer>=0.26.8,<1",
 ]
 
@@ -27,6 +35,7 @@ dev = [
     "pytest>=9.1.1,<10",
     "pytest-cov>=7.1.0,<8",
     "ruff>=0.15.20,<0.16",
+    "types-jsonschema>=4.25.1,<5",
     "types-PyYAML>=6.0.12,<7",
 ]
 
