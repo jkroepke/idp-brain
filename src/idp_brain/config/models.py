@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -50,8 +50,13 @@ class SourceConfig(ConfigModel):
     include_paths: list[str] = Field(default_factory=list)
     exclude_paths: list[str] = Field(default_factory=list)
     extractor_profile: str = Field(min_length=1)
+    include_generated: bool = False
+    include_vendored: bool = False
+    discovery_override_reason: str | None = None
+    override_exclude_paths: list[str] = Field(default_factory=list)
     source_priority: int = Field(ge=0)
     visibility_label: str = Field(min_length=1)
+    corpus_eligibility: str = Field(min_length=1)
     allowed_groups: list[str] = Field(default_factory=list)
     allowed_principals: list[str] = Field(default_factory=list)
     sensitivity_class: str = Field(min_length=1)
@@ -147,6 +152,71 @@ class ModelProfileConfig(ConfigModel):
         return self
 
 
+class EmbeddingProfileConfig(ConfigModel):
+    """Embedding provider profile for sanitized chunk vectors."""
+
+    profile_id: str = Field(min_length=1)
+    provider_id: str = Field(min_length=1)
+    model_name: str = Field(min_length=1)
+    enabled: bool = True
+    external: bool = False
+    deterministic: bool = False
+    dimensions: int = Field(gt=0)
+    batch_size: int = Field(default=32, gt=0)
+    timeout_seconds: float = Field(default=30, gt=0)
+    required_env_vars: list[str] = Field(default_factory=list)
+    token_limit: int | None = Field(default=None, gt=0)
+    options: dict[str, ScalarValue] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_model_profile_keys(cls, data: Any) -> Any:
+        """Allow older model profile keys while exposing the 4.1 contract."""
+
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        if "profile_id" not in normalized and "model_id" in normalized:
+            normalized["profile_id"] = normalized["model_id"]
+        if "provider_id" not in normalized and "provider" in normalized:
+            normalized["provider_id"] = normalized["provider"]
+        if "model_name" not in normalized and "provider_model_id" in normalized:
+            normalized["model_name"] = normalized["provider_model_id"]
+        normalized.pop("model_id", None)
+        normalized.pop("provider", None)
+        normalized.pop("provider_model_id", None)
+        return normalized
+
+    @model_validator(mode="after")
+    def external_profiles_must_be_disabled(self) -> Self:
+        """Prevent accidental external model calls from config alone."""
+
+        if self.external and self.enabled:
+            raise ValueError(
+                "external embedding profiles must set enabled=false until settings "
+                "explicitly allow external calls"
+            )
+        return self
+
+    @property
+    def model_id(self) -> str:
+        """Compatibility alias used by existing retrieval config references."""
+
+        return self.profile_id
+
+    @property
+    def provider(self) -> str:
+        """Compatibility alias for existing model-profile callers."""
+
+        return self.provider_id
+
+    @property
+    def provider_model_id(self) -> str:
+        """Compatibility alias for existing model-profile callers."""
+
+        return self.model_name
+
+
 class ProviderRouteConfig(ConfigModel):
     """Provider routing for one model purpose."""
 
@@ -171,7 +241,7 @@ class ModelsConfig(ConfigModel):
 
     config_version: Literal[1]
     kind: Literal["models"]
-    embedding_profiles: list[ModelProfileConfig]
+    embedding_profiles: list[EmbeddingProfileConfig]
     reranker_profiles: list[ModelProfileConfig]
     generator_profiles: list[ModelProfileConfig] = Field(default_factory=list)
     provider_routes: list[ProviderRouteConfig] = Field(default_factory=list)

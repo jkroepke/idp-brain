@@ -18,8 +18,12 @@ from idp_brain.models import (
     Claim,
     ClaimConflict,
     ClaimVersion,
+    Embedding,
+    EmbeddingJob,
+    EmbeddingModel,
     Fact,
     FactVersion,
+    IndexVersion,
     IngestionRun,
     Relationship,
     RelationshipVersion,
@@ -51,6 +55,10 @@ EXPECTED_TABLES = {
     "redaction_events",
     "license_findings",
     "retrieval_events",
+    "embedding_models",
+    "index_versions",
+    "embeddings",
+    "embedding_jobs",
 }
 
 
@@ -380,12 +388,8 @@ def test_core_metadata_declares_only_phase_tables() -> None:
     assert set(Base.metadata.tables) == EXPECTED_TABLES
 
     excluded_tables = {
-        "embeddings",
-        "embedding_jobs",
-        "embedding_models",
         "access_policies",
         "memory_items",
-        "index_versions",
     }
     assert set(Base.metadata.tables).isdisjoint(excluded_tables)
 
@@ -462,3 +466,24 @@ def test_claims_conflicts_and_relationships_require_primary_citation() -> None:
             and foreign_key.column.name == "id"
             for foreign_key in primary_citation.foreign_keys
         )
+
+
+def test_index_embedding_tables_link_to_sanitized_records() -> None:
+    assert EmbeddingModel.__table__.c.external_calls_allowed.default is not None
+    assert EmbeddingModel.__table__.c.deterministic.default is not None
+
+    expected_foreign_tables = {
+        "index_versions": {"embedding_models", "ingestion_runs"},
+        "embeddings": {"chunks", "embedding_models", "index_versions"},
+        "embedding_jobs": {"chunks", "embedding_models", "index_versions"},
+    }
+    for table_name, expected_tables in expected_foreign_tables.items():
+        foreign_tables = {
+            foreign_key.column.table.name
+            for foreign_key in Base.metadata.tables[table_name].foreign_keys
+        }
+        assert expected_tables <= foreign_tables
+
+    assert IndexVersion.__table__.c.status.nullable is False
+    assert Embedding.__table__.c.sanitized_input_hash.nullable is False
+    assert EmbeddingJob.__table__.c.sanitized_input_hash.nullable is False

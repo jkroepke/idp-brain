@@ -246,7 +246,10 @@ def test_sanitized_retrieval_event_does_not_require_index_versions() -> None:
 
             active_index_column = RetrievalEvent.__table__.c.active_index_version_id
             assert active_index_column.nullable is True
-            assert not active_index_column.foreign_keys
+            assert {
+                foreign_key.column.table.name
+                for foreign_key in active_index_column.foreign_keys
+            } == {"index_versions"}
     finally:
         engine.dispose()
 
@@ -288,6 +291,7 @@ def test_policy_event_schema_links_to_auditable_source_records() -> None:
             "chunks",
             "citations",
             "artifacts",
+            "index_versions",
         },
     }
 

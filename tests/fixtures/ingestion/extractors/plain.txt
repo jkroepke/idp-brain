@@ -1,0 +1,1 @@
+Plain text with ada@example.test and token: sk-test-ingestion-secret.

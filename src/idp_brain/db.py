@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-from sqlalchemy import Engine, create_engine, inspect, text
+from sqlalchemy import Connection, Engine, create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from idp_brain.settings import Settings, load_settings
@@ -65,6 +65,10 @@ class SchemaCheckResult:
         return not self.missing_extensions and not self.missing_tables
 
 
+class MigrationCheckError(RuntimeError):
+    """Raised when the runtime database cannot support required migrations."""
+
+
 def create_db_engine(settings: Settings | None = None) -> Engine:
     """Create a SQLAlchemy engine from application settings."""
 
@@ -119,6 +123,61 @@ def check_schema(engine: Engine | None = None) -> SchemaCheckResult:
         tables=tuple(sorted(tables)),
         missing_extensions=missing_extensions,
         missing_tables=missing_tables,
+    )
+
+
+def assert_pg_search_available(engine: Engine | Connection | None = None) -> None:
+    """Fail clearly when the local runtime cannot create ParadeDB BM25 indexes."""
+
+    current_engine = engine or create_db_engine()
+    if isinstance(current_engine, Connection):
+        pg_search_present = _pg_search_present(current_engine)
+    else:
+        with current_engine.connect() as connection:
+            pg_search_present = _pg_search_present(connection)
+
+    if not pg_search_present:
+        raise MigrationCheckError(
+            "Missing PostgreSQL extension pg_search; ParadeDB BM25 migrations "
+            "require the local extension-enabled database image."
+        )
+
+
+def assert_vector_available(engine: Engine | Connection | None = None) -> None:
+    """Fail clearly when the local runtime cannot create pgvector indexes."""
+
+    current_engine = engine or create_db_engine()
+    if isinstance(current_engine, Connection):
+        vector_present = _extension_present(current_engine, "vector")
+    else:
+        with current_engine.connect() as connection:
+            vector_present = _extension_present(connection, "vector")
+
+    if not vector_present:
+        raise MigrationCheckError(
+            "Missing PostgreSQL extension vector; pgvector HNSW migrations require "
+            "the local extension-enabled database image."
+        )
+
+
+def _pg_search_present(connection: Connection) -> bool:
+    return _extension_present(connection, "pg_search")
+
+
+def _extension_present(connection: Connection, extension_name: str) -> bool:
+    return bool(
+        connection.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM pg_extension
+                    WHERE extname = :extension_name
+                )
+                """
+            ),
+            {"extension_name": extension_name},
+        ).scalar_one()
     )
 
 

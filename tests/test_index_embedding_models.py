@@ -226,6 +226,7 @@ def test_mock_embedding_index_job_vector_and_retrieval_event_reference() -> None
                     embedding_model_id="embedding-model:mock",
                     index_version_id="index-version:test:inactive",
                     sanitized_input_hash="sha256:chunk",
+                    sanitized_content_hash="sha256:chunk",
                     status="pending",
                     attempt_count=0,
                     provider_request_hash="sha256:request",
@@ -239,6 +240,7 @@ def test_mock_embedding_index_job_vector_and_retrieval_event_reference() -> None
                     embedding_model_id="embedding-model:mock",
                     index_version_id="index-version:test:inactive",
                     sanitized_input_hash="sha256:chunk",
+                    sanitized_content_hash="sha256:chunk",
                     vector=[0.0, 1.0, 0.0],
                     dimensions=3,
                     distance_metric="cosine",
@@ -288,7 +290,9 @@ def test_mock_embedding_index_job_vector_and_retrieval_event_reference() -> None
             embedding = session.scalar(select(Embedding))
             assert embedding is not None
             assert embedding.sanitized_input_hash == "sha256:chunk"
+            assert embedding.sanitized_content_hash == "sha256:chunk"
             assert embedding.dimensions == 3
+            assert embedding.is_active is True
 
             event = session.get(RetrievalEvent, "retrieval:event:indexed")
             assert event is not None

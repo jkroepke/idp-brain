@@ -28,7 +28,21 @@ fi
 
 [tasks.test]
 description = "Run the test suite"
-run = "uv run pytest -m 'not integration'"
+run = '''
+uv run pytest -m 'not integration' --ignore=tests/ingestion
+mise run test:ingestion:unit
+'''
+
+[tasks."test:ingestion:unit"]
+description = "Run Phase 3 ingestion tests that do not require Postgres"
+run = "uv run pytest -m 'not integration' tests/ingestion"
+
+[tasks."test:ingestion"]
+description = "Run the full Phase 3 ingestion regression suite, including migrated Postgres flows"
+run = '''
+uv run pytest -m 'not integration' tests/ingestion
+uv run pytest -m integration tests/ingestion
+'''
 
 [tasks.ci]
 description = "Run the complete local validation path"
@@ -63,6 +77,7 @@ postgres_started=1
 mise run up
 mise run db:migrate
 mise run db:check
+mise run test:ingestion
 mise run test:integration
 '''
 
@@ -92,7 +107,19 @@ run = "uv run idp-brain db check"
 
 [tasks."test:integration"]
 description = "Run database-backed integration tests"
-run = "uv run pytest -m integration tests/integration tests/test_migration_upgrade.py tests/test_schema_safety_contracts.py"
+run = '''
+uv run pytest -m integration \
+  tests/integration \
+  tests/test_migration_upgrade.py \
+  tests/test_schema_safety_contracts.py \
+  tests/db/test_embedding_migration.py \
+  tests/db/test_paradedb_bm25_migration.py \
+  tests/db/test_pgvector_hnsw_migration.py \
+  tests/db/test_exact_lookup_indexes.py \
+  tests/retrieval/test_bm25_retrieval.py \
+  tests/retrieval/test_bm25_extension_smoke.py \
+  tests/retrieval/test_vector_extension_smoke.py
+'''
 
 [tasks."db:reset"]
 description = "Reset the disposable local Docker Compose database"

@@ -5,7 +5,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Final
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from idp_brain.models.base import Base, TimestampMixin, new_id, utc_now
@@ -72,8 +80,14 @@ class RedactionEvent(TimestampMixin, Base):
     detector_name: Mapped[str] = mapped_column(String(255), nullable=False)
     detector_version: Mapped[str | None] = mapped_column(String(255))
     rule_id: Mapped[str | None] = mapped_column(String(255))
+    redaction_type: Mapped[str] = mapped_column(
+        String(100),
+        default="secret",
+        nullable=False,
+    )
     marker: Mapped[str] = mapped_column(String(255), nullable=False)
     match_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    confidence: Mapped[float | None] = mapped_column(Float)
     location_locator: Mapped[str | None] = mapped_column(String(2048))
     sanitized_content_hash: Mapped[str | None] = mapped_column(String(255))
     redaction_profile: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -90,5 +104,25 @@ class RedactionEvent(TimestampMixin, Base):
     detected_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,
+        nullable=False,
+    )
+    corpus_eligibility_label: Mapped[str] = mapped_column(
+        String(255),
+        default="unknown",
+        nullable=False,
+    )
+    visibility_label: Mapped[str] = mapped_column(
+        String(100),
+        default="invited_users",
+        nullable=False,
+    )
+    sensitivity_class: Mapped[str] = mapped_column(
+        String(100),
+        default="unknown",
+        nullable=False,
+    )
+    license_policy_label: Mapped[str] = mapped_column(
+        String(100),
+        default="unknown",
         nullable=False,
     )

@@ -2,6 +2,62 @@
 config_version: 1
 kind: models
 embedding_profiles:
+  - profile_id: docs_default
+    provider_id: mock
+    model_name: deterministic-docs-default-v1
+    enabled: true
+    external: false
+    deterministic: true
+    dimensions: 32
+    batch_size: 32
+    timeout_seconds: 10
+    required_env_vars: []
+    token_limit: 512
+    options:
+      normalize: true
+
+  - profile_id: docs_quality
+    provider_id: mock
+    model_name: deterministic-docs-quality-v1
+    enabled: true
+    external: false
+    deterministic: true
+    dimensions: 64
+    batch_size: 16
+    timeout_seconds: 10
+    required_env_vars: []
+    token_limit: 1024
+    options:
+      normalize: true
+
+  - profile_id: code_default
+    provider_id: mock
+    model_name: deterministic-code-default-v1
+    enabled: true
+    external: false
+    deterministic: true
+    dimensions: 32
+    batch_size: 32
+    timeout_seconds: 10
+    required_env_vars: []
+    token_limit: 768
+    options:
+      normalize: true
+
+  - profile_id: memory_default
+    provider_id: mock
+    model_name: deterministic-memory-default-v1
+    enabled: true
+    external: false
+    deterministic: true
+    dimensions: 32
+    batch_size: 32
+    timeout_seconds: 10
+    required_env_vars: []
+    token_limit: 512
+    options:
+      normalize: true
+
   - model_id: local-ci-embedding
     provider: mock
     provider_model_id: deterministic-hash-embedding-v1

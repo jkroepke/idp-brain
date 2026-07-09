@@ -32,15 +32,18 @@ steps:
 
 ```text
 mise run up
-mise run down
 mise run db:migrate
+mise run db:current
+mise run db:history
+mise run db:check
+IDP_BRAIN_CONFIRM_RESET=1 mise run db:reset
+mise run down
 ```
 
 The following task names are reserved now and intentionally fail until their
 own MVP steps implement them:
 
 ```text
-mise run db:reset
 mise run ingest
 mise run retrieve -- <query>
 mise run eval

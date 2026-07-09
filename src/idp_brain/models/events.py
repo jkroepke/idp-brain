@@ -129,7 +129,10 @@ class RetrievalEvent(TimestampMixin, Base):
         String(100),
         nullable=False,
     )
-    active_index_version_id: Mapped[str | None] = mapped_column(String(255))
+    active_index_version_id: Mapped[str | None] = mapped_column(
+        String(255),
+        ForeignKey("index_versions.id"),
+    )
     searched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,

@@ -2,9 +2,13 @@
 config_version: 1
 kind: access
 visibility_labels:
+  - label: invited_users
+    description: Persisted fail-closed visibility label for MVP database
+      records.
+    rank: 0
   - label: public
     description: Safe documentation that can be used in local examples.
-    rank: 0
+    rank: 5
   - label: internal
     description: Repository-local material for authenticated project users.
     rank: 10
@@ -54,7 +58,7 @@ acl_policies:
     default_deny: true
 
   - policy_id: internal-local-sources
-    visibility_label: internal
+    visibility_label: invited_users
     allowed_groups:
       - developers
       - ci
@@ -63,24 +67,22 @@ acl_policies:
     source_ids:
       - local-source-tree
       - local-config-examples
-      - local-openapi-example
-      - local-schema-example
       - local-repository-digest-example
     source_filters:
-      visibility_label: internal
+      visibility_label: invited_users
     chunk_filters:
       sensitivity_class: internal
     default_deny: true
 
   - policy_id: restricted-rich-docs
-    visibility_label: restricted
+    visibility_label: invited_users
     allowed_groups:
       - docs-admins
     allowed_principals: []
     source_ids:
       - local-rich-docs-example
     source_filters:
-      visibility_label: restricted
+      visibility_label: invited_users
     chunk_filters:
       sensitivity_class: confidential
     default_deny: true

@@ -1,0 +1,7 @@
+{
+  "name": "widget",
+  "enabled": true,
+  "limits": {
+    "count": 3
+  }
+}

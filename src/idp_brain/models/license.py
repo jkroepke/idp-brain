@@ -69,6 +69,26 @@ class LicenseFinding(TimestampMixin, Base):
         default="unknown",
         nullable=False,
     )
+    corpus_eligibility_label: Mapped[str] = mapped_column(
+        String(255),
+        default="unknown",
+        nullable=False,
+    )
+    visibility_label: Mapped[str] = mapped_column(
+        String(100),
+        default="invited_users",
+        nullable=False,
+    )
+    sensitivity_class: Mapped[str] = mapped_column(
+        String(100),
+        default="unknown",
+        nullable=False,
+    )
+    license_policy_label: Mapped[str] = mapped_column(
+        String(100),
+        default="unknown",
+        nullable=False,
+    )
     detected_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,

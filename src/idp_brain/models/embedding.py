@@ -100,6 +100,8 @@ class Embedding(Base):
         Index("ix_embeddings_chunk_id", "chunk_id"),
         Index("ix_embeddings_embedding_model_id", "embedding_model_id"),
         Index("ix_embeddings_index_version_id", "index_version_id"),
+        Index("ix_embeddings_is_active", "is_active"),
+        Index("ix_embeddings_active_scope", "index_version_id", "is_active"),
         CheckConstraint("dimensions > 0", name="dimensions_positive"),
         CheckConstraint(DISTANCE_METRIC_CHECK, name="distance_metric_valid"),
     )
@@ -121,14 +123,17 @@ class Embedding(Base):
         nullable=False,
     )
     sanitized_input_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    sanitized_content_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     vector: Mapped[list[float]] = mapped_column(VECTOR(), nullable=False)
     dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
     distance_metric: Mapped[str] = mapped_column(String(100), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,
         nullable=False,
     )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EmbeddingJob(TimestampMixin, Base):
@@ -140,6 +145,12 @@ class EmbeddingJob(TimestampMixin, Base):
         Index("ix_embedding_jobs_chunk_id", "chunk_id"),
         Index("ix_embedding_jobs_embedding_model_id", "embedding_model_id"),
         Index("ix_embedding_jobs_index_version_id", "index_version_id"),
+        UniqueConstraint(
+            "chunk_id",
+            "embedding_model_id",
+            "index_version_id",
+            "sanitized_content_hash",
+        ),
         CheckConstraint("attempt_count >= 0", name="attempt_count_non_negative"),
         CheckConstraint(EMBEDDING_JOB_STATUS_CHECK, name="status_valid"),
     )
@@ -161,6 +172,7 @@ class EmbeddingJob(TimestampMixin, Base):
         nullable=False,
     )
     sanitized_input_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    sanitized_content_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(100), default="pending", nullable=False)
     attempt_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

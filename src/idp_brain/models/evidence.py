@@ -61,6 +61,11 @@ class Chunk(SourceProvenanceMixin, Base):
     sanitized_text: Mapped[str] = mapped_column(Text, nullable=False)
     sanitized_content_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     heading_path: Mapped[str | None] = mapped_column(Text)
+    structure_path: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
     symbol_path: Mapped[str | None] = mapped_column(String(2048))
     signature_text: Mapped[str | None] = mapped_column(Text)
     artifact_path: Mapped[str] = mapped_column(String(2048), nullable=False)
@@ -68,6 +73,17 @@ class Chunk(SourceProvenanceMixin, Base):
     artifact_role: Mapped[str | None] = mapped_column(String(100))
     chunk_kind: Mapped[str | None] = mapped_column(String(100))
     token_count: Mapped[int | None] = mapped_column(Integer)
+    corpus_eligibility_label: Mapped[str] = mapped_column(
+        String(255),
+        default="unknown",
+        nullable=False,
+    )
+    metadata_: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
+        JSON,
+        default=dict,
+        nullable=False,
+    )
 
 
 class ChunkVersion(Base):
@@ -110,6 +126,8 @@ class ChunkVersion(Base):
         ForeignKey("source_versions.id"),
     )
     is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    tombstoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    tombstone_reason: Mapped[str | None] = mapped_column(String(255))
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,
@@ -157,6 +175,11 @@ class Citation(SourceProvenanceMixin, Base):
     line_start: Mapped[int | None] = mapped_column(Integer)
     line_end: Mapped[int | None] = mapped_column(Integer)
     sanitized_content_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    corpus_eligibility_label: Mapped[str] = mapped_column(
+        String(255),
+        default="unknown",
+        nullable=False,
+    )
 
 
 class Fact(SourceProvenanceMixin, Base):
@@ -247,6 +270,8 @@ class FactVersion(Base):
         ForeignKey("source_versions.id"),
     )
     is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    tombstoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    tombstone_reason: Mapped[str | None] = mapped_column(String(255))
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,

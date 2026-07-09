@@ -64,6 +64,7 @@ def _minimal_config() -> ConfigData:
                     "extractor_profile": "docs",
                     "source_priority": 10,
                     "visibility_label": "public",
+                    "corpus_eligibility": "default_retrievable",
                     "allowed_groups": ["developers"],
                     "allowed_principals": [],
                     "sensitivity_class": "public",

@@ -121,6 +121,8 @@ class RelationshipVersion(Base):
         ForeignKey("source_versions.id"),
     )
     is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    tombstoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    tombstone_reason: Mapped[str | None] = mapped_column(String(255))
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,

@@ -58,6 +58,11 @@ class Artifact(SourceProvenanceMixin, TimestampMixin, Base):
     title: Mapped[str | None] = mapped_column(Text)
     mime_type: Mapped[str | None] = mapped_column(String(255))
     language: Mapped[str | None] = mapped_column(String(100))
+    corpus_eligibility_label: Mapped[str] = mapped_column(
+        String(255),
+        default="unknown",
+        nullable=False,
+    )
     size_bytes: Mapped[int | None] = mapped_column(Integer)
     is_generated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_vendored: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -104,6 +109,8 @@ class ArtifactVersion(Base):
         ForeignKey("source_versions.id"),
     )
     is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    tombstoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    tombstone_reason: Mapped[str | None] = mapped_column(String(255))
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,

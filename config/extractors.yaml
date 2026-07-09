@@ -19,6 +19,8 @@ profiles:
         options:
           preserve_headings: true
           preserve_code_blocks: true
+          chunk_size_chars: 1200
+          chunk_overlap_chars: 120
       - tool_id: docling
         enabled: false
         command:
@@ -60,6 +62,8 @@ profiles:
         options:
           preserve_symbols: true
           preserve_imports: true
+          chunk_size_chars: 1000
+          chunk_overlap_chars: 100
       - tool_id: tree-sitter
         enabled: false
         command:
@@ -109,6 +113,8 @@ profiles:
         options:
           preserve_keys: true
           preserve_paths: true
+          chunk_size_chars: 900
+          chunk_overlap_chars: 90
       - tool_id: jsonschema
         enabled: false
         command:
@@ -143,6 +149,8 @@ profiles:
         options:
           preserve_operation_ids: true
           preserve_schema_refs: true
+          chunk_size_chars: 900
+          chunk_overlap_chars: 90
       - tool_id: openapi-spec-validator
         enabled: false
         command:

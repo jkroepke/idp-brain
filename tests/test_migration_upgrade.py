@@ -31,7 +31,7 @@ def test_alembic_rebuilds_phase_2_schema_from_base(
         ).scalar_one()
 
     assert REQUIRED_EXTENSIONS <= extensions
-    assert revision == "0011_incremental_membership"
+    assert revision == "0015_chunks_exact_lookup_indexes"
 
 
 def test_schema_check_accepts_rebuilt_phase_2_database(

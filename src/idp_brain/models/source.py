@@ -102,7 +102,21 @@ class SourceChange(TimestampMixin, Base):
     """Upstream commit, pull request, release entry, or changelog item."""
 
     __tablename__ = "source_changes"
-    __table_args__ = (UniqueConstraint("source_id", "change_key"),)
+    __table_args__ = (
+        UniqueConstraint("source_id", "change_key"),
+        Index(
+            "ix_source_changes_filter_pushdown",
+            "source_id",
+            "source_version_id",
+            "source_allowlisted",
+            "visibility_label",
+            "sensitivity_class",
+            "license_policy_status",
+            "redaction_status",
+        ),
+        Index("ix_source_changes_license_id", "license_id"),
+        *corpus_eligibility_constraints("source_changes"),
+    )
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=new_id)
     source_id: Mapped[str] = mapped_column(
@@ -110,16 +124,38 @@ class SourceChange(TimestampMixin, Base):
         ForeignKey("sources.id"),
         nullable=False,
     )
+    source_version_id: Mapped[str | None] = mapped_column(
+        String(255),
+        ForeignKey("source_versions.id"),
+    )
     change_key: Mapped[str] = mapped_column(String(255), nullable=False)
     change_type: Mapped[str] = mapped_column(String(100), nullable=False)
     title: Mapped[str | None] = mapped_column(Text)
     url: Mapped[str | None] = mapped_column(String(2048))
     commit_sha: Mapped[str | None] = mapped_column(String(128))
+    parent_shas: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     tag: Mapped[str | None] = mapped_column(String(255))
     version: Mapped[str | None] = mapped_column(String(255))
     checksum: Mapped[str | None] = mapped_column(String(255))
     authored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    committed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    source_allowlisted: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    visibility_label: Mapped[str] = mapped_column(
+        String(100), default="invited_users", nullable=False
+    )
+    sensitivity_class: Mapped[str] = mapped_column(
+        String(100), default="unknown", nullable=False
+    )
+    license_policy_status: Mapped[str] = mapped_column(
+        String(100), default="unknown", nullable=False
+    )
+    license_id: Mapped[str | None] = mapped_column(String(100))
+    redaction_status: Mapped[str] = mapped_column(
+        String(100), default="unknown", nullable=False
+    )
 
 
 class ChangeVersion(Base):
@@ -160,8 +196,19 @@ class IngestionRun(Base):
         ForeignKey("source_versions.id"),
     )
     requested_ref: Mapped[str | None] = mapped_column(String(255))
+    config_source_id: Mapped[str | None] = mapped_column(String(255))
+    config_file_hash: Mapped[str | None] = mapped_column(String(64))
+    operator_label: Mapped[str | None] = mapped_column(String(255))
+    extractor_profile: Mapped[str | None] = mapped_column(String(255))
+    visibility_label: Mapped[str | None] = mapped_column(String(100))
+    sensitivity_class: Mapped[str | None] = mapped_column(String(100))
+    license_policy_status: Mapped[str | None] = mapped_column(String(100))
+    corpus_eligibility_label: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(100), nullable=False)
     stats: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    diagnostics: Mapped[dict[str, Any]] = mapped_column(
+        JSON, default=dict, nullable=False
+    )
     error_message: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -70,4 +70,6 @@ addopts = [
 ]
 markers = [
     "integration: tests that require external local services such as PostgreSQL",
+    "requires_pg_search: tests that require ParadeDB pg_search BM25 support",
+    "requires_pgvector: tests that require pgvector ANN/vector-distance support",
 ]

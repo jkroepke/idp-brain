@@ -1,0 +1,3 @@
+# Removed
+
+This document disappears.
