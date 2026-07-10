@@ -1,4 +1,13 @@
+# The root model is intentionally inherited from the user's current Codex
+# selection. Use /model when a task needs a different model or effort.
+
 [agents]
-max_threads = 6
+# Root plus at most two child threads. This permits implementation plus review
+# without encouraging speculative fan-out.
+max_threads = 3
+
+# Only the root orchestrates. Child agents cannot build another agent tree.
 max_depth = 1
+
+# Preserve a model-visible record when an agent turn is interrupted.
 interrupt_message = true

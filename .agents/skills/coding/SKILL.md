@@ -1,349 +1,160 @@
 ---
 name: coding
-description: Run the complete idp-brain multi-agent code-development workflow only when explicitly invoked by the user.
+description: Run the explicit, token-efficient multi-agent code-development workflow for idp-brain.
 ---
 
-# idp-brain coding flow
+# Coding flow
 
-This workflow is active because the user explicitly invoked `$coding`.
+This workflow is active only because the user invoked `$coding`.
 
-The root thread is the project orchestrator.
+## Select the lowest safe mode
 
-This file defines the workflow for developing this repository. It does not
-describe agents implemented by the `idp-brain` application.
+The first argument may be `lean`, `standard`, or `high-risk`.
 
-## Agent structure
+When it is omitted, select the lowest safe mode and state the selection in one
+line. Do not ask only to confirm the mode.
 
-Core agents:
+### Lean
 
-- `implementer`
-- `reviewer`
+Use for documentation, comments, mechanical configuration, formatting,
+trivial single-file changes, and well-understood low-blast-radius code.
 
-Optional, risk-based agents:
+```text
+implementer -> root validation
+```
 
-- `technical_planner`
-- `database_specialist`
-- `retrieval_specialist`
-- `security_specialist`
-- `test_specialist`
+### Standard
 
-Do not create a permanent product-owner, fixer, Git, or general testing
-agent.
+Use for normal product code where an independent correctness check is useful.
+
+```text
+implementer -> reviewer -> root validation
+```
+
+### High-risk
+
+Use when a defect could leak data, corrupt state, silently produce wrong
+evidence, or be difficult to recover from. Examples include migrations,
+transactions, retries, concurrency, redaction, corpus eligibility, MCP
+boundaries, destructive operations, and retrieval ranking or lineage.
+
+```text
+implementer -> deep_reviewer -> root validation
+```
+
+Do not run both `reviewer` and `deep_reviewer` for the same revision.
+
+## Token-efficiency rules
+
+- Never spawn the full agent set.
+- Keep at most one write-capable agent active.
+- Spawn `explorer` only when the affected execution path is not already clear.
+- Spawn `verifier` only when validation is substantial or logs need isolated
+  analysis.
+- Reuse the same implementer for findings, validation failures, and related CI
+  failures.
+- Reuse the same reviewer for re-review.
+- Agents read repository files themselves. Pass paths and a bounded work
+  package instead of copied documents or prior transcripts.
+- Do not ask multiple agents to perform the same exploration or full test run.
+- Use scripts and deterministic checks once instead of repeating model work.
+- Complete one work package before opening another.
+- Parallel implementation is allowed only for truly disjoint directories with
+  explicit integration contracts. Sequential work is the default.
 
 ## Sources of truth
 
-Apply this precedence:
+Use this precedence:
 
-1. The user's current instruction defines the requested outcome.
-2. `ARCHITECTURE.md` defines project invariants and architectural boundaries.
-3. The current file under `plans/mvp/` defines scope, behavior, tests, and
-   acceptance criteria for that implementation step.
-4. The current repository and tests define the existing implementation
-   state.
+1. The user's current instruction.
+2. `ARCHITECTURE.md`.
+3. The active plan step under `plans/`.
+4. Current code and tests.
 
-Inspect the repository before assuming that planned work is missing.
-
-When these sources conflict, report the conflict. Do not silently redefine
-requirements or architecture.
-
-## Repository conventions
-
-This is a Python 3.14 project.
-
-- Use `uv` for Python dependencies and `uv.lock`.
-- Use `mise` as the documented command surface.
-- Prefer `mise run <task>` over invoking internal tools directly.
-- Run `mise run lint`, `mise run test`, or `mise run ci` as appropriate.
-- Use the existing `mise` database tasks for database-backed work.
-- Follow `ARCHITECTURE.md` and the current plan step.
-- Keep local and CI execution deterministic.
-- Do not introduce an external service or production dependency unless it
-  belongs to the explicit work package.
-- Preserve unrelated existing changes.
+Inspect current code before assuming planned work is absent. Surface genuine
+conflicts rather than silently changing requirements.
 
 ## Unit of work
 
-One plan step file is the default unit of work.
+One plan step file is the default unit. Split it only into independently
+testable acceptance slices with bounded files, explicit acceptance criteria,
+independent validation, and clear integration points.
 
-Split a step only when it contains independently testable acceptance slices.
-Every slice must have:
+Use one branch and one pull request per unit by default.
 
-- a bounded behavior and file scope;
-- explicit acceptance criteria;
-- an independent validation path;
-- a clear integration point.
+## Compact handoff
 
-Use one branch and one pull request per unit of work by default.
-
-Small, directly coupled steps may share a pull request only when the root
-orchestrator records why they cannot be reviewed safely in isolation.
-
-## Root orchestrator ownership
-
-Keep one root orchestrator for the pull-request lifecycle.
-
-The root orchestrator owns:
-
-- inspecting the repository, working tree, and current plan status;
-- selecting and tracking the current work package;
-- creating the feature branch;
-- spawning and resuming agents;
-- providing agents with bounded context and actual diffs;
-- reconciling findings;
-- running final validation;
-- staging only the intended files;
-- creating commits and pushing the branch;
-- creating and updating the pull request;
-- monitoring GitHub Actions;
-- routing CI failures to the responsible implementer;
-- marking the pull request ready;
-- merging after all gates pass.
-
-The root orchestrator must not:
-
-- implement production changes;
-- fix review findings;
-- perform the independent review;
-- invent missing product requirements;
-- silently expand scope;
-- resend complete agent transcripts when a concise handoff is sufficient.
-
-No separate Git agent is required.
-
-## Agent lifecycle
-
-### Technical planner
-
-Use `technical_planner` only when a step is large, ambiguous, spans multiple
-architectural boundaries, or needs safe parallel decomposition.
-
-The planner is read-only and short-lived.
-
-It returns a bounded work package containing:
-
-- goal and non-goals;
-- relevant architecture constraints;
-- expected files or modules;
-- acceptance criteria;
-- required validation;
-- dependencies and integration points;
-- risk tags;
-- recommended specialist reviews.
-
-Do not keep a planner thread for the full project.
-
-### Implementer
-
-Create one `implementer` thread per work package.
-
-Reuse the same implementer until that work package is complete, including:
-
-- reviewer fixes;
-- specialist findings;
-- local validation failures;
-- GitHub Actions failures attributable to the work package.
-
-The implementer owns:
-
-- production-code changes;
-- unit and integration tests for the changed behavior;
-- fixtures required by the change;
-- documentation directly affected by the implementation;
-- formatting, linting, type checking, and relevant test execution;
-- a concise report of changes, validation, and unresolved risks.
-
-The implementer must not:
-
-- create or switch branches;
-- stage files;
-- commit or push;
-- create or merge pull requests;
-- approve its own implementation;
-- modify files outside the work package without first reporting why.
-
-### Reviewer
-
-Create a `reviewer` after the implementer has produced a complete diff and
-validation results.
-
-The reviewer is independent and read-only.
-
-Reuse the same reviewer during the work-package fix loop.
-
-Review:
-
-- behavioral correctness;
-- architecture compliance;
-- edge cases and failure handling;
-- type safety;
-- test quality and missing coverage;
-- migration and compatibility impact;
-- security boundaries;
-- unnecessary complexity;
-- unrelated changes;
-- whether validation matches the changed behavior.
-
-Return either:
-
-- structured findings with severity, location, impact, evidence, and required
-  correction; or
-- exactly `APPROVED`.
-
-Do not implement fixes.
-
-For high-risk work, the root orchestrator may create a fresh final reviewer
-after all findings are resolved.
-
-## Specialist selection
-
-Specialist agents are optional. Start them based on risk, not by default.
-
-### Database specialist
-
-Use for changes involving:
-
-- SQLAlchemy models or transactions;
-- Alembic migrations;
-- PostgreSQL constraints;
-- ParadeDB `pg_search`;
-- pgvector;
-- BM25, HNSW, or exact indexes;
-- migration upgrade, downgrade, reset, or compatibility behavior.
-
-### Retrieval specialist
-
-Use for changes involving:
-
-- exact, BM25, or vector retrieval;
-- corpus filtering before candidate generation;
-- rank fusion or score calibration;
-- reranking;
-- retrieval diagnostics;
-- evidence bundles;
-- retrieval evaluation;
-- version, conflict, or lineage retrieval.
-
-### Security specialist
-
-Use for changes involving:
-
-- redaction;
-- secret or PII handling;
-- source allowlists and corpus eligibility;
-- license, visibility, or sensitivity policy;
-- untrusted source content;
-- MCP `search` or `fetch`;
-- logging, telemetry, diagnostics, or provider payloads.
-
-### Test specialist
-
-Use only for substantial:
-
-- database integration validation;
-- migration testing;
-- retrieval-quality evaluation;
-- security testing;
-- concurrency or fault-injection testing;
-- performance validation.
-
-The test specialist validates and reports gaps. It does not fix production
-code.
-
-## Step workflow
-
-1. Inspect the repository, working tree, plan status, architecture, and
-   current step file.
-2. Select one bounded unit of work.
-3. Create a technical-planner thread only when decomposition is necessary.
-4. Create the feature branch.
-5. Create one implementer thread with the bounded work package.
-6. Have the implementer implement code, tests, and required documentation.
-7. Have the implementer run the relevant `mise` tasks.
-8. Create one reviewer and provide the actual diff and validation output.
-9. Start optional specialists based on the risk tags.
-10. Forward all actionable findings to the same implementer.
-11. Resume the same reviewer and specialists after fixes.
-12. Repeat until all required reviewers return `APPROVED`.
-13. Run final repository-level validation from the root thread.
-14. Stage only files belonging to the unit of work.
-15. Create the commit and push the branch.
-16. Create or update the draft pull request.
-17. Monitor required GitHub Actions checks.
-18. Route relevant CI failures to the same implementer.
-19. Obtain approval again after any code change.
-20. For a pull request containing multiple work packages, run a fresh
-    pull-request-wide integration review.
-21. Mark the pull request ready and merge only after all gates pass.
-
-Do not begin a dependent unit of work before the current unit has passed its
-integration gates.
-
-## Parallel work
-
-Parallel read-only analysis is allowed.
-
-Parallel implementation is allowed only when:
-
-- write scopes are disjoint;
-- dependencies are explicit;
-- integration contracts are defined;
-- agents do not modify the same files;
-- the root orchestrator remains responsible for reconciliation.
-
-Do not parallelize merely to keep agents busy.
-
-Database migrations, shared models, public interfaces, configuration
-contracts, and cross-cutting security boundaries should normally be changed
-sequentially.
-
-## Validation policy
-
-Use the narrowest relevant task during implementation and the broader task
-before integration.
-
-Typical commands:
+Pass only:
 
 ```text
-mise run lint
-mise run test
-mise run ci
+Goal:
+Non-goals:
+Plan or issue:
+Relevant paths:
+Acceptance criteria:
+Validation:
+Risk focus:
+Base or diff:
 ```
 
-For database-backed changes, also run the applicable migration, upgrade,
-downgrade, reset, extension, and index smoke-test tasks.
+Do not pass full conversations or complete copies of repository documents.
 
-Report every command that could not be executed and the exact reason. An
-unexecuted check is not a successful check.
+## Root ownership
 
-A work package is not complete merely because tests pass. Every acceptance
-criterion must also be satisfied.
+The root owns work-package selection, flow-mode selection, branch creation,
+agent lifecycle, final validation, staging, commits, pushes, pull requests,
+GitHub Actions monitoring, and merge.
 
-## Pull-request gates
+The root does not implement production changes or perform the independent
+review.
 
-A pull request may be merged only when:
+## Execution
 
-- all work packages are complete;
-- every work package has technical approval;
-- required specialist reviews have passed;
-- all acceptance criteria are satisfied;
-- final validation has passed;
-- required GitHub Actions checks pass;
-- no blocking review finding remains;
-- no merge conflict remains;
-- the pull-request-wide integration review has passed when required.
+1. Inspect the working tree, current plan, architecture, and existing code.
+2. Select one work package and the lowest safe mode.
+3. Create the feature branch.
+4. Use `explorer` only when targeted code-path evidence is missing.
+5. Send one compact work package to `implementer`.
+6. The implementer changes code and tests, runs relevant checks, and reports
+   changed files, command outcomes, failures, and residual risks.
+7. For `lean`, proceed to root validation.
+8. For `standard`, give `reviewer` the work package, actual diff, and validation
+   summary.
+9. For `high-risk`, give `deep_reviewer` those inputs plus only the relevant
+   checklist from `references/`.
+10. Forward findings to the same implementer.
+11. Give the same reviewer only the updated diff and resolution summary.
+12. Use `verifier` only if substantial independent validation is still justified.
+13. Root runs final repository-level validation once.
+14. Root stages intended files, commits, pushes, creates or updates the draft
+    pull request, and monitors required checks.
+15. Route related CI failures to the same implementer and re-review code changes.
+16. Mark ready and merge only after every gate passes.
 
-## Repository safety
+## Ponytail
 
-Do not reset, clean, overwrite, reformat, or discard work whose ownership is
-unclear.
+Do not copy Ponytail's full instructions into subagent prompts.
 
-Before editing, inspect files that another agent or developer may also be
-changing.
+Keep always-on Ponytail disabled for token-sensitive work. Invoke
+`$ponytail-review` only for a concrete over-engineering signal, such as a new
+dependency, a one-implementation abstraction, unexpected files, future
+scaffolding, or a diff much larger than the acceptance criteria require.
 
-Stop only when:
+Ponytail review supplements minimalism. It never replaces correctness or
+security review.
 
-- the requested unit of work is complete;
-- a real requirement or architecture conflict exists;
-- required information cannot be derived from the user instruction, plan,
-  architecture, or repository;
-- validation, commit, push, or merge cannot be completed safely.
+## Git boundaries
+
+Subagents must not create or switch branches, stage, commit, push, or create,
+approve, update, or merge pull requests.
+
+## Merge gates
+
+Merge only when acceptance criteria are satisfied, required review returned
+exactly `APPROVED`, final validation and required checks pass, no blocker or
+merge conflict remains, and unrelated work was preserved.
+
+## Stop conditions
+
+Stop only for completion, a genuine requirement or architecture conflict,
+missing information that cannot be derived, or unsafe validation/integration.
