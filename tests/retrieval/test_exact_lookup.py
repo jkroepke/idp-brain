@@ -6,8 +6,17 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from idp_brain.models import Base, Chunk, ChunkVersion, IndexVersion
-from idp_brain.retrieval import ExactLookupRetriever, RetrievalFilters, RetrievalQuery
+from idp_brain.models import Base, Chunk, ChunkVersion, Citation, IndexVersion
+from idp_brain.retrieval import (
+    ExactLookupRetriever as _ExactLookupRetriever,
+)
+from idp_brain.retrieval import (
+    RetrievalFilters as _RetrievalFilters,
+)
+from idp_brain.retrieval import (
+    RetrievalQuery,
+)
+from idp_brain.retrieval.corpus_filters import TrustedCorpusScope
 from idp_brain.retrieval.profiles import ExactRetrievalProfile
 
 
@@ -17,8 +26,29 @@ def session() -> Iterator[Session]:
     Base.metadata.create_all(engine)
     factory = sessionmaker(engine, expire_on_commit=False, future=True)
     with factory() as session:
+        session.add(
+            IndexVersion(
+                id="idx:default-exact",
+                name="default-exact",
+                index_kind="exact",
+                corpus_scope="mvp",
+                source_scope={},
+                config_hash="default",
+                status="active",
+            )
+        )
+        session.flush()
         yield session
     engine.dispose()
+
+
+def ExactLookupRetriever(session: Session) -> _ExactLookupRetriever:
+    return _ExactLookupRetriever(session, trusted_scope=TrustedCorpusScope())
+
+
+def RetrievalFilters(**kwargs) -> _RetrievalFilters:
+    kwargs.setdefault("active_index_version_id", "idx:default-exact")
+    return _RetrievalFilters(**kwargs)
 
 
 def test_exact_lookup_returns_sanitized_candidate_metadata_only(
@@ -52,6 +82,22 @@ def test_exact_lookup_returns_sanitized_candidate_metadata_only(
     assert candidate.metadata["artifact_path"] == "docs/reference.md"
     assert "sanitized_text" not in candidate.metadata
     assert "raw_text" not in candidate.model_dump_json()
+
+
+def test_exact_lookup_requires_active_index_even_when_profile_opts_out(
+    session: Session,
+) -> None:
+    with pytest.raises(ValueError, match="active_index_version"):
+        ExactLookupRetriever(session).retrieve(
+            RetrievalQuery(query_text="anything"),
+            _RetrievalFilters(),
+            ExactRetrievalProfile(
+                profile_id="opt_out",
+                exact_fields=("symbol_path",),
+                candidate_limit=10,
+                require_active_index=False,
+            ),
+        )
 
 
 def test_exact_lookup_matches_paths_schema_versions_and_errors(
@@ -159,7 +205,7 @@ def test_exact_lookup_profile_can_require_active_index_filter(
     with pytest.raises(ValueError, match="active_index_version"):
         ExactLookupRetriever(session).retrieve(
             RetrievalQuery(query_text="Widget.render"),
-            RetrievalFilters(source_ids=("src:docs",)),
+            _RetrievalFilters(source_ids=("src:docs",)),
             ExactRetrievalProfile(
                 profile_id="api_symbol_lookup",
                 exact_fields=("symbol_path",),
@@ -409,5 +455,25 @@ def _add_chunk(
             source_version_id=source_version_id,
             version_label=version_label,
             is_current=True,
+        )
+    )
+    session.add(
+        Citation(
+            id=f"citation:{chunk_id}",
+            citation_key=f"citation:{chunk_id}",
+            source_url=f"https://example.invalid/{chunk_id}",
+            chunk_id=chunk_id,
+            sanitized_content_hash=f"hash:{chunk_id}",
+            source_id=source_id,
+            source_version_id=source_version_id,
+            source_type=source_type,
+            version_label=version_label,
+            source_allowlisted=True,
+            visibility_label="invited_users",
+            sensitivity_class=sensitivity_class,
+            license_policy_status=license_policy_status,
+            license_id="MIT",
+            redaction_status=redaction_status,
+            corpus_eligibility_label=corpus_eligibility_label,
         )
     )

@@ -9,14 +9,30 @@ from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import Session, sessionmaker
 
 from idp_brain.db import MigrationCheckError
-from idp_brain.models import Base, Chunk, ChunkVersion, IndexVersion
+from idp_brain.models import Base, Chunk, ChunkVersion, Citation, IndexVersion
 from idp_brain.retrieval import (
-    BM25CandidateRetriever,
+    BM25CandidateRetriever as _BM25CandidateRetriever,
+)
+from idp_brain.retrieval import (
     BM25RetrievalProfile,
-    RetrievalFilters,
     RetrievalQuery,
 )
+from idp_brain.retrieval import (
+    RetrievalFilters as _RetrievalFilters,
+)
+from idp_brain.retrieval.corpus_filters import TrustedCorpusScope
 from idp_brain.retrieval.models import BM25_RETRIEVAL_FIELDS
+
+
+def BM25CandidateRetriever(session: Session, **kwargs) -> _BM25CandidateRetriever:
+    return _BM25CandidateRetriever(
+        session, trusted_scope=TrustedCorpusScope(), **kwargs
+    )
+
+
+def RetrievalFilters(**kwargs) -> _RetrievalFilters:
+    kwargs.setdefault("active_index_version_id", "idx:default-bm25")
+    return _RetrievalFilters(**kwargs)
 
 
 @pytest.fixture
@@ -25,6 +41,18 @@ def session() -> Session:
     Base.metadata.create_all(engine)
     factory = sessionmaker(engine, expire_on_commit=False, future=True)
     with factory() as current_session:
+        current_session.add(
+            IndexVersion(
+                id="idx:default-bm25",
+                name="default-bm25",
+                index_kind="bm25",
+                corpus_scope="mvp",
+                source_scope={},
+                config_hash="default",
+                status="active",
+            )
+        )
+        current_session.flush()
         yield current_session
     engine.dispose()
 
@@ -54,6 +82,17 @@ def test_bm25_fallback_returns_metadata_only(session: Session) -> None:
     assert candidate.metadata["artifact_path"] == "docs/reference.md"
     assert "sanitized_text" not in candidate.metadata
     assert "raw_text" not in candidate.model_dump_json()
+
+
+def test_bm25_requires_active_index_even_when_profile_opts_out(
+    session: Session,
+) -> None:
+    with pytest.raises(ValueError, match="active_index_version"):
+        BM25CandidateRetriever(session, deterministic_fallback=True).retrieve(
+            RetrievalQuery(query_text="anything"),
+            _RetrievalFilters(),
+            BM25RetrievalProfile(require_active_index=False),
+        )
 
 
 def test_bm25_profile_limits_search_to_configured_safe_fields(
@@ -101,7 +140,7 @@ def test_bm25_retriever_rejects_low_limit_override(session: Session) -> None:
             deterministic_fallback=True,
         ).retrieve(
             RetrievalQuery(query_text="profile-query"),
-            RetrievalFilters(source_ids=("src:docs",)),
+            _RetrievalFilters(source_ids=("src:docs",)),
             BM25RetrievalProfile(bm25_fields=("artifact_path",)),
             limit=49,
         )
@@ -114,7 +153,7 @@ def test_bm25_profile_can_require_active_index_filter(session: Session) -> None:
             deterministic_fallback=True,
         ).retrieve(
             RetrievalQuery(query_text="profile-query"),
-            RetrievalFilters(source_ids=("src:docs",)),
+            _RetrievalFilters(source_ids=("src:docs",)),
             BM25RetrievalProfile(
                 bm25_fields=("artifact_path",),
                 require_active_index=True,
@@ -403,5 +442,25 @@ def _add_chunk(
             source_version_id=source_version_id,
             version_label=version_label,
             is_current=True,
+        )
+    )
+    session.add(
+        Citation(
+            id=f"citation:{chunk_id}",
+            citation_key=f"citation:{chunk_id}",
+            source_url=f"https://example.invalid/{chunk_id}",
+            chunk_id=chunk_id,
+            sanitized_content_hash=f"hash:{chunk_id}",
+            source_id=source_id,
+            source_version_id=source_version_id,
+            source_type=source_type,
+            version_label=version_label,
+            source_allowlisted=True,
+            visibility_label="invited_users",
+            sensitivity_class=sensitivity_class,
+            license_policy_status=license_policy_status,
+            license_id="MIT",
+            redaction_status=redaction_status,
+            corpus_eligibility_label=corpus_eligibility_label,
         )
     )

@@ -19,6 +19,7 @@ from idp_brain.models import (
     Base,
     Chunk,
     ChunkVersion,
+    Citation,
     Embedding,
     EmbeddingModel,
     IndexVersion,
@@ -28,10 +29,19 @@ from idp_brain.models import (
 from idp_brain.retrieval import (
     RetrievalFilters,
     RetrievalQuery,
-    VectorCandidateRetriever,
     VectorRetrievalProfile,
 )
+from idp_brain.retrieval import (
+    VectorCandidateRetriever as _VectorCandidateRetriever,
+)
+from idp_brain.retrieval.corpus_filters import TrustedCorpusScope
 from idp_brain.retrieval.vector import _query_embedding_input
+
+
+def VectorCandidateRetriever(session: Session, **kwargs) -> _VectorCandidateRetriever:
+    return _VectorCandidateRetriever(
+        session, trusted_scope=TrustedCorpusScope(), **kwargs
+    )
 
 
 @pytest.fixture
@@ -116,6 +126,27 @@ def test_vector_filters_apply_before_candidates_are_exposed(session: Session) ->
         "chunk:expected",
         "chunk:other",
     ]
+
+
+def test_vector_rejects_caller_index_that_mismatches_profile(session: Session) -> None:
+    profile = _vector_profile()
+    provider = DeterministicMockEmbeddingProvider(_embedding_profile())
+    query = RetrievalQuery(query_text="vector retrieval")
+    query_vector = provider.embed(
+        [_query_embedding_input(query, RetrievalFilters(), profile)]
+    )[0]
+    _add_graph(session, query_vector=query_vector.values)
+    session.commit()
+    candidates = VectorCandidateRetriever(
+        session,
+        provider_registry=EmbeddingProviderRegistry([_embedding_profile()]),
+        deterministic_fallback=True,
+    ).retrieve(
+        query,
+        RetrievalFilters(active_index_version_id="caller-controlled-index"),
+        profile,
+    )
+    assert candidates == []
 
 
 def test_vector_retrieval_requires_active_model_and_index_filters(
@@ -544,6 +575,26 @@ def _add_chunk(
             version_label="v1",
             checksum=f"sha256:{chunk_id}",
             is_current=is_current,
+        )
+    )
+    session.add(
+        Citation(
+            id=f"citation:{chunk_id}",
+            citation_key=f"citation:{chunk_id}",
+            source_url=f"https://example.invalid/{chunk_id}",
+            chunk_id=chunk_id,
+            sanitized_content_hash=f"sha256:{chunk_id}",
+            source_id=source_id,
+            source_version_id=source_version_id,
+            source_type="local_directory",
+            version_label="v1",
+            source_allowlisted=True,
+            visibility_label="invited_users",
+            sensitivity_class=sensitivity_class,
+            license_policy_status=license_policy_status,
+            license_id="MIT",
+            redaction_status="redacted",
+            corpus_eligibility_label=corpus_eligibility_label,
         )
     )
     session.flush()

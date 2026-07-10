@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -9,13 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from idp_brain.retrieval_field_sets import BM25_RETRIEVAL_FIELDS
 
 RetrievalPath = Literal["exact", "fuzzy", "bm25", "vector"]
-DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES = ("public", "internal", "confidential")
+DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES = ("public",)
 DEFAULT_RETRIEVAL_LICENSE_POLICY_STATUSES = ("allowed",)
 DEFAULT_RETRIEVAL_CORPUS_ELIGIBILITY_LABELS = (
     "allowed",
     "default_retrievable",
     "eligible",
-    "review_required",
 )
 
 
@@ -28,23 +28,39 @@ class RetrievalQuery(BaseModel):
     enable_fuzzy: bool = False
 
 
-class RetrievalFilters(BaseModel):
-    """Trusted filters applied before lookup predicates."""
+class RetrievalFilterSet(BaseModel):
+    """Request filters applied before lookup predicates.
+
+    Version and release bounds compare opaque stored labels lexicographically; they
+    are not semantic-version ranges. Callers needing semantic ordering must resolve
+    labels to an explicit set before constructing this model.
+    """
 
     model_config = ConfigDict(frozen=True)
 
     source_ids: tuple[str, ...] = ()
     source_types: tuple[str, ...] = ()
     version_labels: tuple[str, ...] = ()
-    visibility_labels: tuple[str, ...] = ()
+    version_from: str | None = None
+    version_to: str | None = None
+    release_from: str | None = None
+    release_to: str | None = None
+    time_from: datetime | None = None
+    time_to: datetime | None = None
+    source_allowlisted: bool = True
+    visibility_labels: tuple[str, ...] = ("invited_users",)
     sensitivity_classes: tuple[str, ...] = DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES
     license_policy_statuses: tuple[str, ...] = DEFAULT_RETRIEVAL_LICENSE_POLICY_STATUSES
-    license_ids: tuple[str, ...] = ()
+    license_ids: tuple[str, ...] = ("MIT", "Apache-2.0")
     redaction_statuses: tuple[str, ...] = ("redacted", "not_required")
     corpus_eligibility_labels: tuple[str, ...] = (
         DEFAULT_RETRIEVAL_CORPUS_ELIGIBILITY_LABELS
     )
     active_index_version_id: str | None = None
+
+
+# Compatibility name retained for the 4.5--4.7 public API.
+RetrievalFilters = RetrievalFilterSet
 
 
 class BM25RetrievalProfile(BaseModel):
