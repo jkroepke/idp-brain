@@ -5,9 +5,10 @@ Add a GitHub Actions workflow for retrieval evaluation that runs the same `mise 
 
 ## Prerequisites
 - Step 5.8 has added `idp-brain eval run` and `mise run eval`.
-- Step 5.9 has added retrieval metrics.
+- Step 5.9 has added retrieval quality metrics.
 - Step 5.10 has added thresholds and CI gate behavior.
 - Phase 1 CI and local PostgreSQL runtime are working.
+- Phase 6 day-2 operations are not prerequisites for this workflow. The evaluation workflow must remain deterministic without starting the observability stack.
 - `ARCHITECTURE.md` remains the source of truth for GitHub Actions, validation-only scheduled ingestion/eval, and durable database constraints.
 
 ## Files To Create Or Modify
@@ -37,6 +38,7 @@ Add a GitHub Actions workflow for retrieval evaluation that runs the same `mise 
 9. Ensure external embedding and reranking providers are disabled in the workflow unless explicitly allowed by repository policy. CI must use deterministic mock/local embedding and reranking fixtures by default.
 10. Keep scheduled ingestion and scheduled eval validation-only until the repository defines export/import format, artifact encryption, retention, restore checks, and explicit promotion into an active `index_versions` record.
 11. The workflow may fail on explicit thresholds and hard safety gates from `config/evaluation.yaml`; missing thresholds remain diagnostic-only.
+12. Do not make Phase 5 CI depend on the Phase 6 telemetry backends, network access, or persistent volumes. Phase 6 adds its own integration validation after the local evaluation path is complete.
 
 ## Tests And Checks
 - `yamllint .github/workflows/eval.yaml`
@@ -52,6 +54,7 @@ Add a GitHub Actions workflow for retrieval evaluation that runs the same `mise 
 - Eval artifacts are sanitized and do not contain raw chunks, secrets, PII, vectors, provider payloads, SQL logs with sensitive literals, or local cache files.
 - Scheduled eval and ingestion remain validation-only until promotion/export/import rules exist.
 - Explicit thresholds and hard safety gates can fail CI; missing thresholds remain diagnostic-only.
+- The workflow succeeds independently of the Phase 6 day-2 operations stack.
 
 ## Suggested Commit Message
 `ci: add retrieval evaluation workflow`
