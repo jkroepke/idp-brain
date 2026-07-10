@@ -1,10 +1,13 @@
 min_version = "2024.9.5"
 
 [tools]
+act = "latest"
+actionlint = "latest"
 prek = "latest"
 python = { version = "3.14.6", virtualenv = ".venv" }
 ty = "latest"
 uv = "0.11.26"
+zizmor = "latest"
 
 [settings]
 python.uv_venv_auto = "create|source"
@@ -22,6 +25,8 @@ run = '''
 uv run ruff format --check .
 uv run ruff check .
 uv run ty check
+actionlint
+zizmor --fix=safe .github/workflows/*
 yaml_files=$(git ls-files --cached --others --exclude-standard '*.yaml' '*.yml')
 if [ -n "$yaml_files" ]; then
   printf '%s\n' "$yaml_files" | xargs uvx yamllint

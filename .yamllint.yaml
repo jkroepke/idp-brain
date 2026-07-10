@@ -1,0 +1,4 @@
+rules:
+  comments:
+    ignore:
+      - .github/workflows/*

@@ -31,6 +31,7 @@ idp-brain = "idp_brain.cli:app"
 
 [dependency-groups]
 dev = [
+    "pyflakes>=3.4.0",
     "pytest>=9.1.1,<10",
     "pytest-cov>=7.1.0,<8",
     "ruff>=0.15.21,<0.16",

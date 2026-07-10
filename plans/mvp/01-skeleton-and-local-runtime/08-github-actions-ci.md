@@ -30,8 +30,6 @@ Add the initial GitHub Actions workflow that runs linting, type checking, tests,
 
 ## Tests And Checks
 - `mise run ci`
-- If `actionlint` is available: `actionlint .github/workflows/ci.yaml`
-- If `act` is available: `act pull_request -W .github/workflows/ci.yaml`
 - Passing condition: local CI task passes, workflow syntax is valid, and the workflow uses only ephemeral local services plus dependency installation.
 
 ## Acceptance Criteria

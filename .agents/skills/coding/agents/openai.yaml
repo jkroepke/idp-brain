@@ -1,0 +1,7 @@
+interface:
+  display_name: "Coding Flow"
+  short_description: "Run the full idp-brain multi-agent coding workflow."
+  default_prompt: "Run the complete coding workflow for this task."
+
+policy:
+  allow_implicit_invocation: false
