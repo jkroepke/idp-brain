@@ -1,0 +1,9 @@
+# Lightweight root orchestrator.
+model = "gpt-5.6-terra"
+model_reasoning_effort = "low"
+model_verbosity = "low"
+
+[agents]
+max_threads = 3
+max_depth = 1
+interrupt_message = false
