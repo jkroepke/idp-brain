@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from time import perf_counter
 from typing import Any
 
@@ -174,25 +174,18 @@ class BM25CandidateRetriever:
         profile: BM25RetrievalProfile,
         limit: int,
     ) -> Select[tuple[Any, ...]]:
+        filtered_chunks = self._filtered_chunk_scope(filters)
         bm25_score = func.pdb.score(Chunk.id).label("bm25_score")
         predicates = self._bm25_predicates(query_text, profile.bm25_fields)
-        matched_field = _case(
-            [
-                (predicate, field_name)
-                for predicate, field_name in zip(
-                    predicates,
-                    profile.bm25_fields,
-                    strict=True,
-                )
-            ],
-            "unknown",
+        matched_fields = _matched_fields_expression(
+            zip(predicates, profile.bm25_fields, strict=True)
         ).label("matched_fields")
         return (
             self._base_chunk_select(
                 bm25_score,
-                matched_field,
+                matched_fields,
             )
-            .where(and_(*self._filter_clauses(filters)))
+            .join(filtered_chunks, filtered_chunks.c.chunk_id == Chunk.id)
             .where(or_(*predicates))
             .order_by(bm25_score.desc(), Chunk.id.asc())
             .limit(limit)
@@ -205,6 +198,7 @@ class BM25CandidateRetriever:
         profile: BM25RetrievalProfile,
         limit: int,
     ) -> Select[tuple[Any, ...]]:
+        filtered_chunks = self._filtered_chunk_scope(filters)
         lowered_query = query_text.lower()
         score_terms: list[Any] = []
         match_clauses: list[Any] = []
@@ -216,23 +210,23 @@ class BM25CandidateRetriever:
             score_terms.append((match_clause, 1.0))
 
         bm25_score = _case(score_terms, 0.0).label("bm25_score")
-        matched_field = _case(
-            [
-                (clause, field_name)
-                for clause, field_name in zip(
-                    match_clauses,
-                    profile.bm25_fields,
-                    strict=True,
-                )
-            ],
-            "unknown",
+        matched_fields = _matched_fields_expression(
+            zip(match_clauses, profile.bm25_fields, strict=True)
         ).label("matched_fields")
         return (
-            self._base_chunk_select(bm25_score, matched_field)
-            .where(and_(*self._filter_clauses(filters)))
+            self._base_chunk_select(bm25_score, matched_fields)
+            .join(filtered_chunks, filtered_chunks.c.chunk_id == Chunk.id)
             .where(or_(*match_clauses))
             .order_by(bm25_score.desc(), Chunk.id.asc())
             .limit(limit)
+        )
+
+    def _filtered_chunk_scope(self, filters: RetrievalFilters) -> Any:
+        return (
+            select(Chunk.id.label("chunk_id"))
+            .where(and_(*self._filter_clauses(filters)))
+            .cte("filtered_chunks")
+            .prefix_with("MATERIALIZED", dialect="postgresql")
         )
 
     def _base_chunk_select(
@@ -320,6 +314,15 @@ def _matched_fields(value: Any) -> tuple[str, ...]:
             return tuple(field for field in value.split(",") if field)
         return (value,)
     return tuple(str(field) for field in value)
+
+
+def _matched_fields_expression(
+    field_predicates: Iterable[tuple[Any, str]],
+) -> Any:
+    expression = literal("")
+    for predicate, field_name in field_predicates:
+        expression += _case([(predicate, f"{field_name},")], "")
+    return expression
 
 
 def _case(whens: Sequence[tuple[Any, Any]], else_: Any) -> Any:

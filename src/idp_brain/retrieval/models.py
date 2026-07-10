@@ -58,7 +58,10 @@ class BM25RetrievalProfile(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     profile_id: str = "bm25_default"
-    bm25_fields: tuple[str, ...] = BM25_RETRIEVAL_FIELDS
+    bm25_fields: tuple[str, ...] = Field(
+        default=BM25_RETRIEVAL_FIELDS,
+        min_length=1,
+    )
     candidate_limit: int = Field(default=20, gt=0, le=200)
 
     @field_validator("bm25_fields")

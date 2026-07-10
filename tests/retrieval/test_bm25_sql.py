@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import Session, sessionmaker
 
 from idp_brain.db import MigrationCheckError
@@ -81,6 +82,118 @@ def test_bm25_profile_limits_search_to_configured_safe_fields(
     assert candidates[0].matched_fields == ("artifact_path",)
     with pytest.raises(ValueError, match="Unsupported BM25 field"):
         BM25RetrievalProfile(bm25_fields=("raw_text",))
+    with pytest.raises(ValueError, match="at least 1 item"):
+        BM25RetrievalProfile(bm25_fields=())
+
+
+def test_bm25_reports_all_matched_safe_fields(session: Session) -> None:
+    _add_chunk(
+        session,
+        chunk_id="chunk:multi",
+        sanitized_text="safe profile-query text",
+        heading_path="profile-query heading",
+        artifact_path="docs/profile-query.md",
+    )
+    session.commit()
+
+    candidates = BM25CandidateRetriever(
+        session,
+        deterministic_fallback=True,
+    ).retrieve(
+        RetrievalQuery(query_text="profile-query"),
+        RetrievalFilters(source_ids=("src:docs",)),
+        BM25RetrievalProfile(
+            bm25_fields=("sanitized_text", "heading_path", "artifact_path")
+        ),
+    )
+
+    assert candidates[0].matched_fields == (
+        "sanitized_text",
+        "heading_path",
+        "artifact_path",
+    )
+    assert "bm25_score" in candidates[0].diagnostics
+    assert "fused_score" not in candidates[0].diagnostics
+    assert "vector_distance" not in candidates[0].diagnostics
+
+
+def test_bm25_postgres_sql_uses_profile_fields_only(session: Session) -> None:
+    statement = BM25CandidateRetriever(session)._postgres_bm25_select(
+        "needle",
+        RetrievalFilters(source_ids=("src:docs",)),
+        BM25RetrievalProfile(bm25_fields=("sanitized_text", "artifact_path")),
+        5,
+    )
+
+    compiled = str(
+        statement.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+    assert "chunks.sanitized_text ||| 'needle'" in compiled
+    assert "chunks.artifact_path ||| 'needle'" in compiled
+    assert "chunks.heading_path |||" not in compiled
+    assert "chunks.symbol_path |||" not in compiled
+    assert "chunks.signature_text |||" not in compiled
+    assert "raw_text" not in compiled
+    assert "source_allowlisted IS true" in compiled
+    assert "license_policy_status IN ('allowed')" in compiled
+    assert "redaction_status IN ('redacted', 'not_required')" in compiled
+
+
+def test_bm25_postgres_sql_uses_filtered_chunk_scope(session: Session) -> None:
+    statement = BM25CandidateRetriever(session)._postgres_bm25_select(
+        "needle",
+        RetrievalFilters(source_ids=("src:docs",)),
+        BM25RetrievalProfile(bm25_fields=("sanitized_text",)),
+        5,
+    )
+
+    compiled = str(
+        statement.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+    filtered_scope_index = compiled.index("WITH filtered_chunks AS MATERIALIZED")
+    filter_predicate_index = compiled.index("chunks.source_allowlisted IS true")
+    candidate_scope_index = compiled.index(
+        "FROM chunks JOIN filtered_chunks "
+        "ON filtered_chunks.chunk_id = chunks.id"
+    )
+    bm25_predicate_index = compiled.index("WHERE chunks.sanitized_text ||| 'needle'")
+
+    assert filtered_scope_index < filter_predicate_index
+    assert filter_predicate_index < candidate_scope_index
+    assert candidate_scope_index < bm25_predicate_index
+
+
+def test_bm25_fallback_sql_mirrors_filtered_chunk_scope(session: Session) -> None:
+    statement = BM25CandidateRetriever(session)._fallback_select(
+        "needle",
+        RetrievalFilters(source_ids=("src:docs",)),
+        BM25RetrievalProfile(bm25_fields=("sanitized_text",)),
+        5,
+    )
+
+    compiled = str(
+        statement.compile(
+            dialect=sqlite.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+    assert "WITH filtered_chunks AS" in compiled
+    assert (
+        "FROM chunks JOIN filtered_chunks "
+        "ON filtered_chunks.chunk_id = chunks.id"
+    ) in compiled
+    assert compiled.index("chunks.source_allowlisted IS 1") < compiled.index(
+        "FROM chunks JOIN filtered_chunks"
+    )
 
 
 def test_bm25_filters_apply_before_matching_by_default(session: Session) -> None:
