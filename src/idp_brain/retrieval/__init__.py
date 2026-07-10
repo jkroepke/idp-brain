@@ -7,7 +7,9 @@ from idp_brain.retrieval.models import (
     Candidate,
     RetrievalFilters,
     RetrievalQuery,
+    VectorRetrievalProfile,
 )
+from idp_brain.retrieval.vector import VectorCandidateRetriever
 
 __all__ = [
     "BM25CandidateRetriever",
@@ -16,4 +18,6 @@ __all__ = [
     "ExactLookupRetriever",
     "RetrievalFilters",
     "RetrievalQuery",
+    "VectorCandidateRetriever",
+    "VectorRetrievalProfile",
 ]

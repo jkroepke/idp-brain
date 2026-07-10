@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-RetrievalPath = Literal["exact", "fuzzy", "bm25"]
+RetrievalPath = Literal["exact", "fuzzy", "bm25", "vector"]
 BM25_RETRIEVAL_FIELDS = (
     "sanitized_text",
     "heading_path",
@@ -77,6 +77,20 @@ class BM25RetrievalProfile(BaseModel):
                 f"Unsupported BM25 field(s): {invalid}; allowed: {allowed}"
             )
         return value
+
+
+class VectorRetrievalProfile(BaseModel):
+    """Vector retrieval settings resolved from the active query profile."""
+
+    model_config = ConfigDict(frozen=True)
+
+    profile_id: str = "vector_default"
+    embedding_profile_id: str = Field(default="docs_default", min_length=1)
+    embedding_model_id: str = Field(min_length=1)
+    index_version_id: str = Field(min_length=1)
+    candidate_limit: int = Field(default=20, gt=0, le=500)
+    hnsw_ef_search: int = Field(default=100, gt=0)
+    exact_search_threshold: int = Field(default=200, ge=0)
 
 
 class Candidate(BaseModel):
