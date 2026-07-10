@@ -5,15 +5,17 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from sqlalchemy import Select, String, and_, cast, exists, func, literal, or_, select
+from sqlalchemy import Select, String, cast, func, literal, or_, select
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session
 
-from idp_brain.models import Chunk, ChunkVersion, IndexVersion, Source
+from idp_brain.models import Chunk, Source
+from idp_brain.retrieval.corpus_filters import (
+    TrustedCorpusScope,
+    build_filtered_chunk_scope,
+    resolve_active_index_filters,
+)
 from idp_brain.retrieval.models import (
-    DEFAULT_RETRIEVAL_CORPUS_ELIGIBILITY_LABELS,
-    DEFAULT_RETRIEVAL_LICENSE_POLICY_STATUSES,
-    DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES,
     Candidate,
     RetrievalFilters,
     RetrievalPath,
@@ -57,8 +59,9 @@ METADATA_EXACT_FIELD_PRIORITY: Mapping[str, int] = {
 class ExactLookupRetriever:
     """Retrieve sanitized chunk candidates using exact metadata lookup."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, *, trusted_scope: TrustedCorpusScope) -> None:
         self._session = session
+        self._trusted_scope = trusted_scope
 
     def retrieve(
         self,
@@ -77,20 +80,17 @@ class ExactLookupRetriever:
         top_k = min(limit, active_profile.candidate_limit)
         if top_k <= 0:
             return []
-        if (
-            active_profile.require_active_index
-            and filters.active_index_version_id is None
-        ):
+        if filters.active_index_version_id is None:
             raise ValueError(
                 "exact retrieval profile requires active_index_version filtering"
             )
 
         intent = parse_query_intent(query.query_text)
-        scoped_filters = self._filters_with_active_index_scope(filters)
+        scoped_filters = self._filters_with_active_index_scope(filters, active_profile)
         filtered_chunks = self._filtered_chunk_scope(
             scoped_filters,
             active_profile.exact_fields,
-        ).cte("filtered_chunks")
+        )
         field_terms = _field_terms_for_profile(
             intent.field_terms(),
             active_profile.exact_fields,
@@ -117,104 +117,62 @@ class ExactLookupRetriever:
     def _filters_with_active_index_scope(
         self,
         filters: RetrievalFilters,
+        profile: ExactRetrievalProfile,
     ) -> RetrievalFilters:
-        if filters.active_index_version_id is None:
-            return filters
-
-        index_version = self._session.get(IndexVersion, filters.active_index_version_id)
-        if index_version is None:
-            return filters.model_copy(update={"source_ids": ("__no_matching_index__",)})
-
-        scoped_source_ids = tuple(index_version.source_scope.get("source_ids") or ())
-        if not scoped_source_ids:
-            return filters
-        if filters.source_ids:
-            scoped_source_ids = tuple(
-                source_id
-                for source_id in filters.source_ids
-                if source_id in scoped_source_ids
-            )
-            if not scoped_source_ids:
-                scoped_source_ids = ("__no_matching_index__",)
-        return filters.model_copy(update={"source_ids": scoped_source_ids})
+        return resolve_active_index_filters(
+            self._session,
+            filters,
+            required=True,
+            expected_kind="exact",
+            expected_profile=profile.profile_id
+            if profile.require_active_index
+            else None,
+        )
 
     def _filtered_chunk_scope(
         self,
         filters: RetrievalFilters,
         exact_fields: Sequence[str],
     ) -> Select[tuple[Any, ...]]:
-        current_chunk = exists(
-            select(literal(1)).where(
-                ChunkVersion.chunk_id == Chunk.id,
-                ChunkVersion.is_current.is_(True),
-            )
-        )
-        clauses = [
-            Chunk.source_allowlisted.is_(True),
-            Chunk.source_version_id.is_not(None),
-            Chunk.sanitized_text != "",
-            current_chunk,
-        ]
-        if filters.source_ids:
-            clauses.append(Chunk.source_id.in_(filters.source_ids))
-        if filters.source_types:
-            clauses.append(Chunk.source_type.in_(filters.source_types))
-        if filters.version_labels:
-            clauses.append(Chunk.version_label.in_(filters.version_labels))
-        if filters.visibility_labels:
-            clauses.append(Chunk.visibility_label.in_(filters.visibility_labels))
-        sensitivity_classes = (
-            filters.sensitivity_classes or DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES
-        )
-        license_policy_statuses = (
-            filters.license_policy_statuses or DEFAULT_RETRIEVAL_LICENSE_POLICY_STATUSES
-        )
-        corpus_eligibility_labels = (
-            filters.corpus_eligibility_labels
-            or DEFAULT_RETRIEVAL_CORPUS_ELIGIBILITY_LABELS
-        )
-        clauses.append(Chunk.sensitivity_class.in_(sensitivity_classes))
-        clauses.append(Chunk.license_policy_status.in_(license_policy_statuses))
-        if filters.license_ids:
-            clauses.append(Chunk.license_id.in_(filters.license_ids))
-        if filters.redaction_statuses:
-            clauses.append(Chunk.redaction_status.in_(filters.redaction_statuses))
-        clauses.append(Chunk.corpus_eligibility_label.in_(corpus_eligibility_labels))
-
         metadata_fields = [
             Chunk.metadata_[field_name].as_string().label(field_name)
             for field_name in exact_fields
             if not hasattr(Chunk, field_name)
         ]
 
-        return select(
-            Chunk.id.label("chunk_id"),
-            Chunk.source_id,
-            Chunk.source_version_id,
-            Chunk.source_type,
-            Chunk.version_label,
-            Chunk.artifact_path,
-            Chunk.heading_path,
-            Chunk.structure_path,
-            Chunk.symbol_path,
-            Chunk.signature_text,
-            Chunk.sanitized_text,
-            Chunk.language,
-            Chunk.artifact_role,
-            Chunk.chunk_kind,
-            Chunk.visibility_label,
-            Chunk.sensitivity_class,
-            Chunk.license_policy_status,
-            Chunk.license_id,
-            Chunk.redaction_status,
-            Chunk.corpus_eligibility_label,
-            Chunk.first_seen_at,
-            select(Source.authority_rank)
-            .where(Source.id == Chunk.source_id)
-            .scalar_subquery()
-            .label("authority_rank"),
-            *metadata_fields,
-        ).where(and_(*clauses))
+        return build_filtered_chunk_scope(
+            self._session,
+            filters,
+            trusted=self._trusted_scope,
+            columns=(
+                Chunk.id.label("chunk_id"),
+                Chunk.source_id,
+                Chunk.source_version_id,
+                Chunk.source_type,
+                Chunk.version_label,
+                Chunk.artifact_path,
+                Chunk.heading_path,
+                Chunk.structure_path,
+                Chunk.symbol_path,
+                Chunk.signature_text,
+                Chunk.sanitized_text,
+                Chunk.language,
+                Chunk.artifact_role,
+                Chunk.chunk_kind,
+                Chunk.visibility_label,
+                Chunk.sensitivity_class,
+                Chunk.license_policy_status,
+                Chunk.license_id,
+                Chunk.redaction_status,
+                Chunk.corpus_eligibility_label,
+                Chunk.first_seen_at,
+                select(Source.authority_rank)
+                .where(Source.id == Chunk.source_id)
+                .scalar_subquery()
+                .label("authority_rank"),
+                *metadata_fields,
+            ),
+        )
 
     def _exact_select(
         self,

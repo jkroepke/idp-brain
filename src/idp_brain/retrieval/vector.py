@@ -12,11 +12,8 @@ from uuid import NAMESPACE_URL, uuid5
 from pgvector.sqlalchemy import VECTOR  # type: ignore[import-untyped]
 from sqlalchemy import (
     Select,
-    and_,
     cast,
-    exists,
     func,
-    literal,
     literal_column,
     select,
     text,
@@ -32,16 +29,18 @@ from idp_brain.embeddings import (
 from idp_brain.ingestion.runs import sanitize_diagnostic_text
 from idp_brain.models import (
     Chunk,
-    ChunkVersion,
     Embedding,
     EmbeddingModel,
     IndexVersion,
     Source,
 )
+from idp_brain.retrieval.corpus_filters import (
+    TrustedCorpusScope,
+    build_filtered_chunk_scope,
+    chunk_filter_clauses,
+    resolve_active_index_filters,
+)
 from idp_brain.retrieval.models import (
-    DEFAULT_RETRIEVAL_CORPUS_ELIGIBILITY_LABELS,
-    DEFAULT_RETRIEVAL_LICENSE_POLICY_STATUSES,
-    DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES,
     Candidate,
     RetrievalFilters,
     RetrievalQuery,
@@ -61,10 +60,12 @@ class VectorCandidateRetriever:
         *,
         provider_registry: EmbeddingProviderRegistry,
         deterministic_fallback: bool = False,
+        trusted_scope: TrustedCorpusScope,
     ) -> None:
         self._session = session
         self._provider_registry = provider_registry
         self._deterministic_fallback = deterministic_fallback
+        self._trusted_scope = trusted_scope
 
     def retrieve(
         self,
@@ -165,21 +166,21 @@ class VectorCandidateRetriever:
         filters: RetrievalFilters,
         profile: VectorRetrievalProfile,
     ) -> RetrievalFilters:
-        index_version = self._session.get(IndexVersion, profile.index_version_id)
-        if index_version is None:
-            return filters.model_copy(update={"source_ids": ("__no_matching_index__",)})
-        scoped_source_ids = tuple(index_version.source_scope.get("source_ids") or ())
-        if not scoped_source_ids:
-            return filters
-        if filters.source_ids:
-            scoped_source_ids = tuple(
-                source_id
-                for source_id in filters.source_ids
-                if source_id in scoped_source_ids
-            )
-            if not scoped_source_ids:
-                scoped_source_ids = ("__no_matching_index__",)
-        return filters.model_copy(update={"source_ids": scoped_source_ids})
+        if (
+            filters.active_index_version_id is not None
+            and filters.active_index_version_id != profile.index_version_id
+        ):
+            return filters.model_copy(update={"source_ids": ("__no_active_index__",)})
+        indexed_filters = filters.model_copy(
+            update={"active_index_version_id": profile.index_version_id}
+        )
+        return resolve_active_index_filters(
+            self._session,
+            indexed_filters,
+            required=True,
+            expected_kind="vector",
+            expected_profile=profile.embedding_profile_id,
+        )
 
     def _active_embedding_model(
         self,
@@ -207,52 +208,12 @@ class VectorCandidateRetriever:
     def _filtered_count(self, filters: RetrievalFilters) -> int:
         return int(
             self._session.execute(
-                select(func.count())
-                .select_from(Chunk)
-                .where(and_(*self._filter_clauses(filters)))
+                select(func.count()).select_from(self._filtered_chunk_scope(filters))
             ).scalar_one()
         )
 
     def _filter_clauses(self, filters: RetrievalFilters) -> list[Any]:
-        current_chunk = exists(
-            select(literal(1)).where(
-                ChunkVersion.chunk_id == Chunk.id,
-                ChunkVersion.is_current.is_(True),
-                ChunkVersion.tombstoned_at.is_(None),
-            )
-        )
-        clauses = [
-            Chunk.source_allowlisted.is_(True),
-            Chunk.source_version_id.is_not(None),
-            Chunk.sanitized_text != "",
-            current_chunk,
-        ]
-        if filters.source_ids:
-            clauses.append(Chunk.source_id.in_(filters.source_ids))
-        if filters.source_types:
-            clauses.append(Chunk.source_type.in_(filters.source_types))
-        if filters.version_labels:
-            clauses.append(Chunk.version_label.in_(filters.version_labels))
-        if filters.visibility_labels:
-            clauses.append(Chunk.visibility_label.in_(filters.visibility_labels))
-        sensitivity_classes = (
-            filters.sensitivity_classes or DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES
-        )
-        license_policy_statuses = (
-            filters.license_policy_statuses or DEFAULT_RETRIEVAL_LICENSE_POLICY_STATUSES
-        )
-        corpus_eligibility_labels = (
-            filters.corpus_eligibility_labels
-            or DEFAULT_RETRIEVAL_CORPUS_ELIGIBILITY_LABELS
-        )
-        clauses.append(Chunk.sensitivity_class.in_(sensitivity_classes))
-        clauses.append(Chunk.license_policy_status.in_(license_policy_statuses))
-        if filters.license_ids:
-            clauses.append(Chunk.license_id.in_(filters.license_ids))
-        if filters.redaction_statuses:
-            clauses.append(Chunk.redaction_status.in_(filters.redaction_statuses))
-        clauses.append(Chunk.corpus_eligibility_label.in_(corpus_eligibility_labels))
-        return clauses
+        return chunk_filter_clauses(self._session, filters, self._trusted_scope)
 
     def _filtered_chunk_scope(self, filters: RetrievalFilters) -> Any:
         authority_rank = (
@@ -261,8 +222,11 @@ class VectorCandidateRetriever:
             .scalar_subquery()
             .label("authority_rank")
         )
-        return (
-            select(
+        return build_filtered_chunk_scope(
+            self._session,
+            filters,
+            trusted=self._trusted_scope,
+            columns=(
                 Chunk.id.label("chunk_id"),
                 Chunk.source_id,
                 Chunk.source_version_id,
@@ -283,10 +247,7 @@ class VectorCandidateRetriever:
                 Chunk.redaction_status,
                 Chunk.corpus_eligibility_label,
                 authority_rank,
-            )
-            .where(and_(*self._filter_clauses(filters)))
-            .cte("filtered_chunks")
-            .prefix_with("MATERIALIZED", dialect="postgresql")
+            ),
         )
 
     def _postgres_vector_select(

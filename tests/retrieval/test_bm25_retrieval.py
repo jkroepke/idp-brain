@@ -6,11 +6,19 @@ from sqlalchemy.orm import Session
 
 from idp_brain.db import assert_pg_search_available
 from idp_brain.retrieval import (
-    BM25CandidateRetriever,
+    BM25CandidateRetriever as _BM25CandidateRetriever,
+)
+from idp_brain.retrieval import (
     BM25RetrievalProfile,
     RetrievalFilters,
     RetrievalQuery,
 )
+from idp_brain.retrieval.corpus_filters import TrustedCorpusScope
+
+
+def BM25CandidateRetriever(session: Session) -> _BM25CandidateRetriever:
+    return _BM25CandidateRetriever(session, trusted_scope=TrustedCorpusScope())
+
 
 pytestmark = [pytest.mark.integration, pytest.mark.requires_pg_search]
 
@@ -24,7 +32,10 @@ def test_bm25_retriever_returns_scored_sanitized_candidates(
     with Session(phase2_migrated_engine) as session:
         candidates = BM25CandidateRetriever(session).retrieve(
             RetrievalQuery(query_text="ParadeDB BM25 retrieval"),
-            RetrievalFilters(source_ids=("source:bm25-retriever",)),
+            RetrievalFilters(
+                source_ids=("source:bm25-retriever",),
+                active_index_version_id="index:bm25-retriever",
+            ),
             BM25RetrievalProfile(
                 profile_id="bm25_integration",
                 bm25_fields=("sanitized_text", "heading_path", "artifact_path"),
@@ -55,6 +66,20 @@ def _insert_bm25_fixture(engine: Engine) -> None:
                     'source:bm25-retriever', 'bm25-retriever',
                     'BM25 Retriever Source', 'local_directory', true,
                     'invited_users', 'public', 'allowed', 'MIT', 'redacted'
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO index_versions (
+                    id, name, index_kind, corpus_scope, source_scope,
+                    bm25_profile, config_hash, status, failure_metadata
+                ) VALUES (
+                    'index:bm25-retriever', 'bm25-retriever', 'bm25', 'mvp',
+                    '{"source_ids":["source:bm25-retriever"]}',
+                    'bm25_integration', 'fixture', 'active', '{}'
                 )
                 """
             )
@@ -136,6 +161,40 @@ def _insert_bm25_fixture(engine: Engine) -> None:
                         'source-version:bm25-retriever:v1', 'PRIVATE.md',
                         'local_directory', true, 'invited_users', 'public',
                         'allowed', 'MIT', 'redacted', 'v1'
+                    )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO citations (
+                    id, citation_key, source_url, chunk_id,
+                    sanitized_content_hash, corpus_eligibility_label,
+                    source_id, source_version_id, source_type, version_label,
+                    source_allowlisted, visibility_label, sensitivity_class,
+                    license_policy_status, license_id, redaction_status
+                )
+                VALUES
+                    (
+                        'citation:bm25-retriever:expected',
+                        'citation:bm25-retriever:expected',
+                        'https://example.invalid/expected',
+                        'chunk:bm25-retriever:expected', 'sha256:citation-expected',
+                        'allowed', 'source:bm25-retriever',
+                        'source-version:bm25-retriever:v1', 'local_directory',
+                        'v1', true, 'invited_users', 'public', 'allowed', 'MIT',
+                        'redacted'
+                    ),
+                    (
+                        'citation:bm25-retriever:blocked',
+                        'citation:bm25-retriever:blocked',
+                        'https://example.invalid/blocked',
+                        'chunk:bm25-retriever:blocked', 'sha256:citation-blocked',
+                        'prohibited', 'source:bm25-retriever',
+                        'source-version:bm25-retriever:v1', 'local_directory',
+                        'v1', true, 'invited_users', 'public', 'allowed', 'MIT',
+                        'redacted'
                     )
                 """
             )

@@ -9,9 +9,18 @@ from idp_brain.embeddings import EmbeddingProviderRegistry
 from idp_brain.models import Base
 from idp_brain.retrieval import (
     RetrievalFilters,
-    VectorCandidateRetriever,
     VectorRetrievalProfile,
 )
+from idp_brain.retrieval import (
+    VectorCandidateRetriever as _VectorCandidateRetriever,
+)
+from idp_brain.retrieval.corpus_filters import TrustedCorpusScope
+
+
+def VectorCandidateRetriever(session: Session, **kwargs) -> _VectorCandidateRetriever:
+    return _VectorCandidateRetriever(
+        session, trusted_scope=TrustedCorpusScope(), **kwargs
+    )
 
 
 @pytest.fixture
