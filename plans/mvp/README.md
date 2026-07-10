@@ -11,8 +11,10 @@ technical sources, persists only sanitized evidence, indexes it with PostgreSQL
 through CLI and read-only MCP tools.
 
 The MVP is complete when ingestion, exact/BM25/vector retrieval, evidence
-bundles, MCP tools, evaluation, CI, the local OpenTelemetry operations stack,
-database backup and restore, and Python 3.14 free-threaded validation work.
+bundles, MCP tools, evaluation, CI, the local observability operations stack,
+OpenTelemetry contrib instrumentation, collector-native PostgreSQL metrics,
+OpenTelemetry-correlated continuous profiling, database backup and restore, and
+Python 3.14 free-threaded validation work.
 
 ## Execution Rules
 
@@ -44,10 +46,12 @@ filtering, fusion, reranking, evidence bundles, and retrieval tests.
 Phase 5 exposes the system through CLI and read-only MCP tools and adds retrieval
 evaluation, thresholds, and deterministic GitHub Actions evaluation.
 
-Phase 6 contains day-2 operations: the complete local OpenTelemetry stack,
-OpenTelemetry metrics, logs and traces, database backup and restore, and a final
-Python 3.14 free-threaded integration test with the global interpreter lock
-disabled.
+Phase 6 contains day-2 operations: the complete local observability stack,
+OpenTelemetry metrics, logs and traces, Python contrib instrumentation for
+logging, exceptions, SQLAlchemy, psycopg2, threading and urllib3,
+collector-native PostgreSQL metrics, OpenTelemetry-correlated continuous
+profiling, database backup and restore, and a final Python 3.14 free-threaded
+integration test with the global interpreter lock disabled.
 
 ## Phase 1: Skeleton And Local Runtime
 
@@ -121,10 +125,16 @@ disabled.
 
 ## Phase 6: Day-2 Operations And OpenTelemetry
 
-All application telemetry uses OpenTelemetry APIs and OTLP. Prometheus is the
-metrics backend and receives OTLP through its native OTLP receiver. The
-application does not expose a scrape endpoint and does not use backend-specific
-client instrumentation.
+Application metrics, logs, and traces use OpenTelemetry APIs and OTLP.
+Prometheus receives metrics through its native OTLP receiver. Grafana Alloy's
+collector-native PostgreSQL receiver supplies database metrics through the same
+metrics pipeline. Python contrib instrumentation covers logging, uncaught
+exceptions, SQLAlchemy-managed database access, direct psycopg2 connections,
+thread context propagation, and urllib3 client calls. Continuous Python profiles
+are linked to OpenTelemetry root spans with `pyroscope-otel` and routed through
+Grafana Alloy's Pyroscope-compatible receiver to Pyroscope. The application does
+not expose a metrics scrape endpoint and does not use backend-specific metrics
+instrumentation.
 
 - [Phase directory](06-day-2-operations/)
 - [6.1 OpenTelemetry Backend Stack](06-day-2-operations/01-otel-backend-stack.md)
@@ -132,4 +142,5 @@ client instrumentation.
 - [6.3 OpenTelemetry Logging](06-day-2-operations/03-otel-logging.md)
 - [6.4 OpenTelemetry Traces](06-day-2-operations/04-otel-traces.md)
 - [6.5 Docker Compose Database Backup](06-day-2-operations/05-database-backup.md)
-- [6.6 Python 3.14 Free-Threaded Integration Test](06-day-2-operations/06-free-threaded-integration-test.md)
+- [6.6 OpenTelemetry Span Profiling](06-day-2-operations/06-otel-profiling.md)
+- [6.7 Python 3.14 Free-Threaded Integration Test](06-day-2-operations/07-free-threaded-integration-test.md)
