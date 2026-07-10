@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import typing
 from pathlib import Path
 
 
@@ -15,6 +16,7 @@ class GitCommandError(RuntimeError):
         self.command = command
         self.returncode = returncode
 
+    @typing.override
     def __str__(self) -> str:
         return f"git command failed with exit code {self.returncode}"
 
