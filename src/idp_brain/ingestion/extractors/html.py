@@ -38,7 +38,7 @@ class HtmlExtractor:
             line_range = _line_range(element)
             locator = _locator(artifact, element, line_range)
             if name.startswith("h") and len(name) == 2:
-                level = int(name[1])
+                level = int(name.removeprefix("h"))
                 title = element.get_text(" ", strip=True)
                 headings = [(lvl, val) for lvl, val in headings if lvl < level]
                 headings.append((level, title))

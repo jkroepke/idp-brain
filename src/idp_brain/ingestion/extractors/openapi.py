@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import cast
 
 import yaml
 from openapi_spec_validator import validate
@@ -77,17 +78,26 @@ def _operation_candidates(
     artifact: ArtifactExtractionContext,
     parsed: object,
 ) -> list[ExtractionCandidate]:
-    if not isinstance(parsed, dict) or not isinstance(parsed.get("paths"), dict):
+    if not isinstance(parsed, dict):
         return []
+    document = cast(dict[str, object], parsed)
+    paths = document.get("paths")
+    if not isinstance(paths, dict):
+        return []
+    typed_paths = cast(dict[str, object], paths)
     candidates: list[ExtractionCandidate] = []
-    for path, methods in sorted(parsed["paths"].items()):
+    for path, methods in sorted(typed_paths.items()):
         if not isinstance(path, str) or not isinstance(methods, dict):
             continue
-        for method, operation in sorted(methods.items()):
+        typed_methods = cast(dict[str, object], methods)
+        for method, operation in sorted(typed_methods.items()):
             if method.lower() not in HTTP_METHODS or not isinstance(operation, dict):
                 continue
-            operation_id = operation.get("operationId")
-            summary = operation.get("summary") or operation.get("description")
+            typed_operation = cast(dict[str, object], operation)
+            operation_id = typed_operation.get("operationId")
+            summary = typed_operation.get("summary") or typed_operation.get(
+                "description"
+            )
             metadata = (
                 {"operation_id": operation_id} if isinstance(operation_id, str) else {}
             )
@@ -110,17 +120,27 @@ def _schema_candidates(
 ) -> list[ExtractionCandidate]:
     if not isinstance(parsed, dict):
         return []
-    schemas = parsed.get("components", {})
+    document = cast(dict[str, object], parsed)
+    schemas = document.get("components", {})
     if isinstance(schemas, dict):
-        schemas = schemas.get("schemas", {})
+        components = cast(dict[str, object], schemas)
+        schemas = components.get("schemas", {})
     if not isinstance(schemas, dict):
         return []
+    typed_schemas = cast(dict[str, object], schemas)
     return [
         ExtractionCandidate(
             candidate_type="schema",
-            text=value.get("description") if isinstance(value, dict) else None,
+            text=_schema_description(value),
             locator=f"{artifact.logical_locator}#/components/schemas/{name}",
             schema_path=("components", "schemas", str(name)),
         )
-        for name, value in sorted(schemas.items())
+        for name, value in sorted(typed_schemas.items())
     ]
+
+
+def _schema_description(value: object) -> str | None:
+    if not isinstance(value, dict):
+        return None
+    description = cast(dict[str, object], value).get("description")
+    return description if isinstance(description, str) else None

@@ -1,7 +1,9 @@
 min_version = "2024.9.5"
 
 [tools]
+prek = "latest"
 python = { version = "3.14.6", virtualenv = ".venv" }
+ty = "latest"
 uv = "0.11.26"
 
 [settings]
@@ -19,7 +21,7 @@ description = "Run formatting, linting, and type checks"
 run = '''
 uv run ruff format --check .
 uv run ruff check .
-uv run mypy src/idp_brain
+uv run ty check
 yaml_files=$(git ls-files --cached --others --exclude-standard '*.yaml' '*.yml')
 if [ -n "$yaml_files" ]; then
   printf '%s\n' "$yaml_files" | xargs uvx yamllint

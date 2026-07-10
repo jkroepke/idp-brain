@@ -16,6 +16,7 @@ from idp_brain.retrieval.models import (
     DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES,
     Candidate,
     RetrievalFilters,
+    RetrievalPath,
     RetrievalQuery,
 )
 from idp_brain.retrieval.profiles import ExactRetrievalProfile
@@ -342,7 +343,7 @@ class ExactLookupRetriever:
         row: RowMapping,
         *,
         rank: int,
-        retrieval_path: str,
+        retrieval_path: RetrievalPath,
     ) -> Candidate:
         metadata = {
             "source_id": row["source_id"],
@@ -366,7 +367,7 @@ class ExactLookupRetriever:
         }
         return Candidate(
             chunk_id=row["chunk_id"],
-            retrieval_path=retrieval_path,  # type: ignore[arg-type]
+            retrieval_path=retrieval_path,
             rank=rank,
             matched_fields=(row["matched_field"],),
             metadata=metadata,
@@ -393,10 +394,7 @@ def _field_terms_for_profile(
         for field_name in exact_fields
     }
     raw_terms = tuple(
-        term
-        for terms in parsed_field_terms.values()
-        for term in terms
-        if term
+        term for terms in parsed_field_terms.values() for term in terms if term
     )
     for field_name in exact_fields:
         if field_name in parsed_field_terms:

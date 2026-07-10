@@ -4,17 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
 
+from idp_brain.config.base import ConfigModel
 from idp_brain.config.retrieval import RetrievalConfig
 
 ScalarValue = str | int | float | bool | None
-
-
-class ConfigModel(BaseModel):
-    """Base model for all configuration contracts."""
-
-    model_config = ConfigDict(extra="forbid")
 
 
 SourceType = Literal[

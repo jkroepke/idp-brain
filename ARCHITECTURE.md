@@ -354,7 +354,7 @@ The exact extractor set is configurable per source. The initial repository shoul
 Validation tools:
 
 - ruff
-- mypy
+- ty
 - pytest
 - yamllint
 - actionlint
