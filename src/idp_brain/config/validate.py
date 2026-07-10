@@ -6,6 +6,7 @@ import argparse
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Protocol
 
 import yaml
 
@@ -25,9 +26,16 @@ from idp_brain.config.loader import (
     load_security_config,
     load_sources_config,
 )
-from idp_brain.config.models import ConfigModel
 
-ConfigLoader = Callable[[Path], ConfigModel]
+
+class ConfigDocument(Protocol):
+    """Validated top-level configuration document."""
+
+    @property
+    def kind(self) -> str: ...
+
+
+ConfigLoader = Callable[[Path], ConfigDocument]
 
 CONFIG_LOADERS_BY_KIND: dict[str, ConfigLoader] = {
     "access": load_access_config,
@@ -41,7 +49,7 @@ CONFIG_LOADERS_BY_KIND: dict[str, ConfigLoader] = {
 }
 
 
-def validate_config_path(path: Path) -> ConfigModel:
+def validate_config_path(path: Path) -> ConfigDocument:
     """Validate one YAML config file by its top-level ``kind`` value."""
 
     kind = _read_kind(path)

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import Field, computed_field, model_validator
 
+from idp_brain.config.base import ConfigModel
 from idp_brain.models.relationship import RELATIONSHIP_TYPES
 from idp_brain.retrieval_field_sets import BM25_RETRIEVAL_FIELDS
 
@@ -82,10 +83,8 @@ PLACEHOLDER_RELATIONSHIP_TYPES = frozenset(
 )
 
 
-class RetrievalConfigModel(BaseModel):
+class RetrievalConfigModel(ConfigModel):
     """Base model for retrieval configuration contracts."""
-
-    model_config = ConfigDict(extra="forbid")
 
 
 QueryProfileId = Literal[

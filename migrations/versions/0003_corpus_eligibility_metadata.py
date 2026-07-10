@@ -10,38 +10,6 @@ down_revision: str | None = "0002_core_data_model"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-SOURCE_ALLOWLISTED = sa.Column(
-    "source_allowlisted",
-    sa.Boolean(),
-    server_default=sa.text("false"),
-    nullable=False,
-)
-LICENSE_POLICY_STATUS = sa.Column(
-    "license_policy_status",
-    sa.String(length=100),
-    server_default="unknown",
-    nullable=False,
-)
-LICENSE_ID = sa.Column("license_id", sa.String(length=100), nullable=True)
-VISIBILITY_LABEL = sa.Column(
-    "visibility_label",
-    sa.String(length=100),
-    server_default="invited_users",
-    nullable=False,
-)
-SENSITIVITY_CLASS = sa.Column(
-    "sensitivity_class",
-    sa.String(length=100),
-    server_default="unknown",
-    nullable=False,
-)
-REDACTION_STATUS = sa.Column(
-    "redaction_status",
-    sa.String(length=100),
-    server_default="unknown",
-    nullable=False,
-)
-
 ELIGIBILITY_COLUMNS = (
     "source_allowlisted",
     "visibility_label",
@@ -60,8 +28,64 @@ PROVENANCE_TABLES = (
 ELIGIBILITY_TABLES = ("sources", "source_versions", *PROVENANCE_TABLES)
 
 
-def _copy_column(column: sa.Column) -> sa.Column:
-    return column.copy()
+def _source_allowlisted_column() -> sa.Column:
+    return sa.Column(
+        "source_allowlisted",
+        sa.Boolean(),
+        server_default=sa.text("false"),
+        nullable=False,
+    )
+
+
+def _license_policy_status_column() -> sa.Column:
+    return sa.Column(
+        "license_policy_status",
+        sa.String(length=100),
+        server_default="unknown",
+        nullable=False,
+    )
+
+
+def _license_id_column() -> sa.Column:
+    return sa.Column("license_id", sa.String(length=100), nullable=True)
+
+
+def _visibility_label_column() -> sa.Column:
+    return sa.Column(
+        "visibility_label",
+        sa.String(length=100),
+        server_default="invited_users",
+        nullable=False,
+    )
+
+
+def _sensitivity_class_column() -> sa.Column:
+    return sa.Column(
+        "sensitivity_class",
+        sa.String(length=100),
+        server_default="unknown",
+        nullable=False,
+    )
+
+
+def _redaction_status_column() -> sa.Column:
+    return sa.Column(
+        "redaction_status",
+        sa.String(length=100),
+        server_default="unknown",
+        nullable=False,
+    )
+
+
+def _eligibility_columns() -> tuple[sa.Column, ...]:
+    return (
+        _source_allowlisted_column(),
+        _visibility_label_column(),
+        _sensitivity_class_column(),
+        _license_policy_status_column(),
+        _license_id_column(),
+        _redaction_status_column(),
+    )
 
 
 def _create_eligibility_constraints(table_name: str) -> None:
@@ -217,31 +241,24 @@ def upgrade() -> None:
         )
     )
 
-    op.add_column("sources", _copy_column(SOURCE_ALLOWLISTED))
-    op.add_column("sources", _copy_column(LICENSE_POLICY_STATUS))
-    op.add_column("sources", _copy_column(LICENSE_ID))
-    op.add_column("sources", _copy_column(REDACTION_STATUS))
+    op.add_column("sources", _source_allowlisted_column())
+    op.add_column("sources", _license_policy_status_column())
+    op.add_column("sources", _license_id_column())
+    op.add_column("sources", _redaction_status_column())
     op.alter_column("sources", "visibility_label", server_default="invited_users")
     op.execute("UPDATE sources SET visibility_label = 'invited_users'")
 
     for table_name in PROVENANCE_TABLES:
-        op.add_column(table_name, _copy_column(SOURCE_ALLOWLISTED))
-        op.add_column(table_name, _copy_column(LICENSE_POLICY_STATUS))
-        op.add_column(table_name, _copy_column(LICENSE_ID))
+        op.add_column(table_name, _source_allowlisted_column())
+        op.add_column(table_name, _license_policy_status_column())
+        op.add_column(table_name, _license_id_column())
         op.alter_column(table_name, "visibility_label", server_default="invited_users")
         op.alter_column(table_name, "redaction_status", server_default="unknown")
         op.execute(f"UPDATE {table_name} SET visibility_label = 'invited_users'")
         op.execute(f"UPDATE {table_name} SET redaction_status = 'unknown'")
 
-    for column in (
-        SOURCE_ALLOWLISTED,
-        VISIBILITY_LABEL,
-        SENSITIVITY_CLASS,
-        LICENSE_POLICY_STATUS,
-        LICENSE_ID,
-        REDACTION_STATUS,
-    ):
-        op.add_column("source_versions", _copy_column(column))
+    for column in _eligibility_columns():
+        op.add_column("source_versions", column)
 
     for table_name in ELIGIBILITY_TABLES:
         _create_eligibility_constraints(table_name)

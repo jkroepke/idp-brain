@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from idp_brain.config import load_sources_config
 from idp_brain.config.models import SourceConfig
@@ -63,7 +63,7 @@ def run_ingestion(
     source_id: str | None,
     dry_run: bool,
     operator_label: str | None = None,
-    session_factory: sessionmaker | None = None,
+    session_factory: sessionmaker[Session] | None = None,
     before_source_work: Callable[[IngestionRun], None] | None = None,
 ) -> list[IngestionRunResult]:
     """Record local ingestion runs for one source or all enabled sources."""

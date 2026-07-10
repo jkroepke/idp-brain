@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import cast
 
 import yaml
 from jsonschema import Draft202012Validator
@@ -76,12 +77,13 @@ def _schema_property_candidates(
 ) -> list[ExtractionCandidate]:
     if not isinstance(parsed, dict):
         return []
+    schema = cast(dict[str, object], parsed)
     candidates: list[ExtractionCandidate] = []
-    definitions = parsed.get("$defs")
+    definitions = schema.get("$defs")
     if isinstance(definitions, dict):
         for name, value in sorted(definitions.items()):
             candidates.append(_schema_candidate(artifact, ("$defs", str(name)), value))
-    properties = parsed.get("properties")
+    properties = schema.get("properties")
     if isinstance(properties, dict):
         for name, value in sorted(properties.items()):
             candidates.append(
@@ -98,15 +100,16 @@ def _schema_candidate(
     text = None
     metadata: dict[str, object] = {}
     if isinstance(value, dict):
-        description = value.get("description")
+        schema = cast(dict[str, object], value)
+        description = schema.get("description")
         if isinstance(description, str):
             text = description
-        if "type" in value:
-            metadata["type"] = str(value["type"])
-        if "required" in value:
-            metadata["required"] = value["required"]
-        if "enum" in value:
-            enum = value["enum"]
+        if "type" in schema:
+            metadata["type"] = str(schema["type"])
+        if "required" in schema:
+            metadata["required"] = schema["required"]
+        if "enum" in schema:
+            enum = schema["enum"]
             metadata["enum_count"] = len(enum) if isinstance(enum, list) else 0
     return ExtractionCandidate(
         candidate_type="schema_path",

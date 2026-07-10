@@ -216,8 +216,7 @@ def test_bm25_postgres_sql_uses_filtered_chunk_scope(session: Session) -> None:
     filtered_scope_index = compiled.index("WITH filtered_chunks AS MATERIALIZED")
     filter_predicate_index = compiled.index("chunks.source_allowlisted IS true")
     candidate_scope_index = compiled.index(
-        "FROM chunks JOIN filtered_chunks "
-        "ON filtered_chunks.chunk_id = chunks.id"
+        "FROM chunks JOIN filtered_chunks ON filtered_chunks.chunk_id = chunks.id"
     )
     bm25_predicate_index = compiled.index("WHERE chunks.sanitized_text ||| 'needle'")
 
@@ -243,8 +242,7 @@ def test_bm25_fallback_sql_mirrors_filtered_chunk_scope(session: Session) -> Non
 
     assert "WITH filtered_chunks AS" in compiled
     assert (
-        "FROM chunks JOIN filtered_chunks "
-        "ON filtered_chunks.chunk_id = chunks.id"
+        "FROM chunks JOIN filtered_chunks ON filtered_chunks.chunk_id = chunks.id"
     ) in compiled
     assert compiled.index("chunks.source_allowlisted IS 1") < compiled.index(
         "FROM chunks JOIN filtered_chunks"
