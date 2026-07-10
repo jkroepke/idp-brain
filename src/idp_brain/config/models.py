@@ -6,6 +6,8 @@ from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from idp_brain.config.retrieval import RetrievalConfig
+
 ScalarValue = str | int | float | bool | None
 
 
@@ -246,75 +248,6 @@ class ModelsConfig(ConfigModel):
     generator_profiles: list[ModelProfileConfig] = Field(default_factory=list)
     provider_routes: list[ProviderRouteConfig] = Field(default_factory=list)
     budgets: ModelBudgetsConfig
-
-
-QueryProfileId = Literal[
-    "docs_qa",
-    "code_qa",
-    "api_symbol_lookup",
-    "release_change_search",
-    "conflict_search",
-]
-
-FusionMethod = Literal["reciprocal_rank_fusion", "weighted_sum", "rrf"]
-
-
-class CandidateCountsConfig(ConfigModel):
-    """Candidate limits for exact, BM25, vector, fusion, and reranking stages."""
-
-    exact_top_k: int = Field(ge=0)
-    bm25_top_k: int = Field(ge=0)
-    vector_top_k: int = Field(ge=0)
-    fused_top_k: int = Field(gt=0)
-    rerank_top_k: int = Field(ge=0)
-
-
-class WeightingConfig(ConfigModel):
-    """Configurable ranking weight used for freshness and authority signals."""
-
-    enabled: bool = True
-    weight: float = Field(ge=0)
-    strategy: str = Field(min_length=1)
-
-
-class RetrievalQueryProfileConfig(ConfigModel):
-    """Named query profile for hybrid retrieval."""
-
-    profile_id: QueryProfileId
-    exact_fields: list[str] = Field(min_length=1)
-    bm25_fields: list[str] = Field(min_length=1)
-    vector_index: str = Field(min_length=1)
-    embedding_model: str = Field(min_length=1)
-    candidate_counts: CandidateCountsConfig
-    fusion_method: FusionMethod
-    reranker: str | None = None
-    freshness_weighting: WeightingConfig
-    authority_weighting: WeightingConfig
-    token_budget: int = Field(gt=0)
-
-
-class RetrievalConfig(ConfigModel):
-    """Top-level ``retrieval.yaml`` contract."""
-
-    config_version: Literal[1]
-    kind: Literal["retrieval"]
-    query_profiles: list[RetrievalQueryProfileConfig]
-
-    @model_validator(mode="after")
-    def required_query_profiles_must_be_present(self) -> Self:
-        required_profiles = {
-            "docs_qa",
-            "code_qa",
-            "api_symbol_lookup",
-            "release_change_search",
-            "conflict_search",
-        }
-        configured_profiles = {profile.profile_id for profile in self.query_profiles}
-        missing_profiles = sorted(required_profiles - configured_profiles)
-        if missing_profiles:
-            joined = ", ".join(missing_profiles)
-            raise ValueError(f"missing retrieval query profiles: {joined}")
-        return self
 
 
 class EvaluationFixtureConfig(ConfigModel):

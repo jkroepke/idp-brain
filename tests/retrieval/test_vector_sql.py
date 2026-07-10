@@ -162,7 +162,7 @@ def _profile() -> VectorRetrievalProfile:
         embedding_profile_id="docs_default",
         embedding_model_id="embedding-model:mock",
         index_version_id="index-version:test",
-        candidate_limit=5,
+        candidate_limit=50,
         hnsw_ef_search=64,
         exact_search_threshold=10,
     )

@@ -45,9 +45,14 @@ class BM25CandidateRetriever:
         """Return BM25 candidates after trusted SQL-side filtering."""
 
         active_profile = profile or BM25RetrievalProfile()
-        top_k = limit if limit is not None else active_profile.candidate_limit
-        if top_k <= 0:
-            return []
+        top_k = _candidate_limit(limit, active_profile.candidate_limit)
+        if (
+            active_profile.require_active_index
+            and filters.active_index_version_id is None
+        ):
+            raise ValueError(
+                "BM25 retrieval profile requires active_index_version filtering"
+            )
 
         started_at = perf_counter()
         scoped_filters = self._filters_with_active_index_scope(filters)
@@ -203,7 +208,7 @@ class BM25CandidateRetriever:
         score_terms: list[Any] = []
         match_clauses: list[Any] = []
         for field_name in profile.bm25_fields:
-            column = getattr(Chunk, field_name)
+            column = _bm25_field_expression(field_name)
             field_text = func.lower(func.coalesce(column, ""))
             match_clause = field_text.contains(lowered_query)
             match_clauses.append(match_clause)
@@ -270,7 +275,7 @@ class BM25CandidateRetriever:
         query_text: str,
         fields: Sequence[str],
     ) -> list[Any]:
-        return [getattr(Chunk, field).op("|||")(query_text) for field in fields]
+        return [_bm25_field_expression(field).op("|||")(query_text) for field in fields]
 
     def _candidate_from_row(self, row: RowMapping, *, rank: int) -> Candidate:
         metadata = {
@@ -325,7 +330,20 @@ def _matched_fields_expression(
     return expression
 
 
+def _bm25_field_expression(field_name: str) -> Any:
+    if hasattr(Chunk, field_name):
+        return getattr(Chunk, field_name)
+    return Chunk.metadata_[field_name].as_string()
+
+
 def _case(whens: Sequence[tuple[Any, Any]], else_: Any) -> Any:
     from sqlalchemy import case
 
     return case(*whens, else_=else_)
+
+
+def _candidate_limit(override: int | None, profile_limit: int) -> int:
+    limit = profile_limit if override is None else override
+    if not 50 <= limit <= 200:
+        raise ValueError("BM25 candidate limit must be between 50 and 200")
+    return limit

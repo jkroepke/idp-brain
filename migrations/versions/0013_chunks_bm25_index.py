@@ -17,6 +17,7 @@ CHUNKS_BM25_FIELDS = (
     "symbol_path",
     "signature_text",
     "artifact_path",
+    "commit_sha",
     "source_type",
     "language",
     "version_label",

@@ -6,14 +6,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from idp_brain.retrieval_field_sets import BM25_RETRIEVAL_FIELDS
+
 RetrievalPath = Literal["exact", "fuzzy", "bm25", "vector"]
-BM25_RETRIEVAL_FIELDS = (
-    "sanitized_text",
-    "heading_path",
-    "symbol_path",
-    "signature_text",
-    "artifact_path",
-)
 DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES = ("public", "internal", "confidential")
 DEFAULT_RETRIEVAL_LICENSE_POLICY_STATUSES = ("allowed",)
 DEFAULT_RETRIEVAL_CORPUS_ELIGIBILITY_LABELS = (
@@ -62,7 +57,8 @@ class BM25RetrievalProfile(BaseModel):
         default=BM25_RETRIEVAL_FIELDS,
         min_length=1,
     )
-    candidate_limit: int = Field(default=20, gt=0, le=200)
+    candidate_limit: int = Field(default=50, ge=50, le=200)
+    require_active_index: bool = False
 
     @field_validator("bm25_fields")
     @classmethod
@@ -88,7 +84,8 @@ class VectorRetrievalProfile(BaseModel):
     embedding_profile_id: str = Field(default="docs_default", min_length=1)
     embedding_model_id: str = Field(min_length=1)
     index_version_id: str = Field(min_length=1)
-    candidate_limit: int = Field(default=20, gt=0, le=500)
+    candidate_limit: int = Field(default=50, ge=50, le=200)
+    require_active_index: bool = False
     hnsw_ef_search: int = Field(default=100, gt=0)
     exact_search_threshold: int = Field(default=200, ge=0)
 

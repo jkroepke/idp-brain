@@ -18,6 +18,7 @@ from idp_brain.retrieval.models import (
     RetrievalFilters,
     RetrievalQuery,
 )
+from idp_brain.retrieval.profiles import ExactRetrievalProfile
 from idp_brain.retrieval.query_intent import parse_query_intent
 
 EXACT_FIELD_PRIORITY: Mapping[str, int] = {
@@ -28,6 +29,27 @@ EXACT_FIELD_PRIORITY: Mapping[str, int] = {
     "signature_text": 50,
     "version_label": 60,
     "sanitized_text": 70,
+}
+DEFAULT_EXACT_FIELDS = tuple(EXACT_FIELD_PRIORITY)
+METADATA_EXACT_FIELD_PRIORITY: Mapping[str, int] = {
+    "endpoint_path": 15,
+    "schema_key": 25,
+    "schema_path": 26,
+    "field_name": 27,
+    "flag_name": 28,
+    "method_name": 29,
+    "function_name": 30,
+    "error_string": 31,
+    "import_path": 32,
+    "commit_sha": 33,
+    "release_tag": 34,
+    "first_seen_version": 35,
+    "last_seen_version": 36,
+    "claim_subject": 37,
+    "claim_predicate": 38,
+    "citation_id": 39,
+    "tracked_ref": 41,
+    "change_summary": 65,
 }
 
 
@@ -41,21 +63,40 @@ class ExactLookupRetriever:
         self,
         query: RetrievalQuery,
         filters: RetrievalFilters,
+        profile: ExactRetrievalProfile | None = None,
         limit: int = 20,
     ) -> list[Candidate]:
         """Return deterministic exact candidates after trusted filtering."""
 
-        if limit <= 0:
+        active_profile = profile or ExactRetrievalProfile(
+            profile_id="exact_default",
+            exact_fields=DEFAULT_EXACT_FIELDS,
+            candidate_limit=limit,
+        )
+        top_k = min(limit, active_profile.candidate_limit)
+        if top_k <= 0:
             return []
+        if (
+            active_profile.require_active_index
+            and filters.active_index_version_id is None
+        ):
+            raise ValueError(
+                "exact retrieval profile requires active_index_version filtering"
+            )
 
         intent = parse_query_intent(query.query_text)
         scoped_filters = self._filters_with_active_index_scope(filters)
-        filtered_chunks = self._filtered_chunk_scope(scoped_filters).cte(
-            "filtered_chunks"
+        filtered_chunks = self._filtered_chunk_scope(
+            scoped_filters,
+            active_profile.exact_fields,
+        ).cte("filtered_chunks")
+        field_terms = _field_terms_for_profile(
+            intent.field_terms(),
+            active_profile.exact_fields,
         )
 
         exact_rows = self._session.execute(
-            self._exact_select(filtered_chunks, intent.field_terms(), limit)
+            self._exact_select(filtered_chunks, field_terms, top_k)
         ).mappings()
         candidates = [
             self._candidate_from_row(row, rank=index + 1, retrieval_path="exact")
@@ -65,7 +106,7 @@ class ExactLookupRetriever:
             return candidates
 
         fuzzy_rows = self._session.execute(
-            self._fuzzy_select(filtered_chunks, intent.fuzzy_terms, limit)
+            self._fuzzy_select(filtered_chunks, intent.fuzzy_terms, top_k)
         ).mappings()
         return [
             self._candidate_from_row(row, rank=index + 1, retrieval_path="fuzzy")
@@ -97,7 +138,9 @@ class ExactLookupRetriever:
         return filters.model_copy(update={"source_ids": scoped_source_ids})
 
     def _filtered_chunk_scope(
-        self, filters: RetrievalFilters
+        self,
+        filters: RetrievalFilters,
+        exact_fields: Sequence[str],
     ) -> Select[tuple[Any, ...]]:
         current_chunk = exists(
             select(literal(1)).where(
@@ -137,6 +180,12 @@ class ExactLookupRetriever:
             clauses.append(Chunk.redaction_status.in_(filters.redaction_statuses))
         clauses.append(Chunk.corpus_eligibility_label.in_(corpus_eligibility_labels))
 
+        metadata_fields = [
+            Chunk.metadata_[field_name].as_string().label(field_name)
+            for field_name in exact_fields
+            if not hasattr(Chunk, field_name)
+        ]
+
         return select(
             Chunk.id.label("chunk_id"),
             Chunk.source_id,
@@ -163,6 +212,7 @@ class ExactLookupRetriever:
             .where(Source.id == Chunk.source_id)
             .scalar_subquery()
             .label("authority_rank"),
+            *metadata_fields,
         ).where(and_(*clauses))
 
     def _exact_select(
@@ -184,7 +234,10 @@ class ExactLookupRetriever:
                     func.lower(cast(column, String)).contains(term.lower())
                     for term in terms
                 ]
-            elif field_name in {"sanitized_text", "signature_text", "heading_path"}:
+            elif (
+                field_name in {"sanitized_text", "signature_text", "heading_path"}
+                or field_name in METADATA_EXACT_FIELD_PRIORITY
+            ):
                 term_clauses = [
                     func.lower(column).contains(term.lower()) for term in terms
                 ]
@@ -193,7 +246,7 @@ class ExactLookupRetriever:
             match_clause = or_(*term_clauses)
             field_matches.append(match_clause)
             field_labels.append((match_clause, field_name))
-            field_priority.append((match_clause, EXACT_FIELD_PRIORITY[field_name]))
+            field_priority.append((match_clause, _field_priority(field_name)))
 
         if not field_matches:
             return self._empty_select(filtered_chunks)
@@ -329,3 +382,32 @@ def _case(whens: Sequence[tuple[Any, Any]], else_: Any) -> Any:
     from sqlalchemy import case
 
     return case(*whens, else_=else_)
+
+
+def _field_terms_for_profile(
+    parsed_field_terms: Mapping[str, Sequence[str]],
+    exact_fields: Sequence[str],
+) -> dict[str, tuple[str, ...]]:
+    field_terms = {
+        field_name: tuple(parsed_field_terms.get(field_name, ()))
+        for field_name in exact_fields
+    }
+    raw_terms = tuple(
+        term
+        for terms in parsed_field_terms.values()
+        for term in terms
+        if term
+    )
+    for field_name in exact_fields:
+        if field_name in parsed_field_terms:
+            continue
+        if field_name in METADATA_EXACT_FIELD_PRIORITY:
+            field_terms[field_name] = raw_terms
+    return {field_name: terms for field_name, terms in field_terms.items() if terms}
+
+
+def _field_priority(field_name: str) -> int:
+    return EXACT_FIELD_PRIORITY.get(
+        field_name,
+        METADATA_EXACT_FIELD_PRIORITY.get(field_name, 80),
+    )

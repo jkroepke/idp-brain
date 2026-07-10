@@ -75,9 +75,11 @@ class VectorCandidateRetriever:
     ) -> list[Candidate]:
         """Return vector candidates after trusted SQL-side filtering."""
 
-        top_k = limit if limit is not None else profile.candidate_limit
-        if top_k <= 0:
-            return []
+        top_k = _candidate_limit(limit, profile.candidate_limit)
+        if profile.require_active_index and filters.active_index_version_id is None:
+            raise ValueError(
+                "vector retrieval profile requires active_index_version filtering"
+            )
 
         started_at = perf_counter()
         embedding_model = self._active_embedding_model(profile)
@@ -493,3 +495,10 @@ def _retrieval_strategy(
     if filtered_count <= profile.exact_search_threshold:
         return "exact"
     return "hnsw"
+
+
+def _candidate_limit(override: int | None, profile_limit: int) -> int:
+    limit = profile_limit if override is None else override
+    if not 50 <= limit <= 200:
+        raise ValueError("vector candidate limit must be between 50 and 200")
+    return limit

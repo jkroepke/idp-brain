@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from idp_brain.models import Base, Chunk, ChunkVersion, IndexVersion
 from idp_brain.retrieval import ExactLookupRetriever, RetrievalFilters, RetrievalQuery
+from idp_brain.retrieval.profiles import ExactRetrievalProfile
 
 
 @pytest.fixture
@@ -99,6 +100,73 @@ def test_exact_lookup_matches_paths_schema_versions_and_errors(
             filters,
         )
     ] == ["chunk:error"]
+
+
+def test_exact_lookup_uses_profile_metadata_fields(session: Session) -> None:
+    _add_chunk(
+        session,
+        chunk_id="chunk:endpoint",
+        sanitized_text="safe endpoint docs",
+        metadata={"endpoint_path": "GET /v1/users", "schema_key": "UserList"},
+    )
+    session.commit()
+
+    candidates = ExactLookupRetriever(session).retrieve(
+        RetrievalQuery(query_text="/v1/users"),
+        RetrievalFilters(source_ids=("src:docs",)),
+        ExactRetrievalProfile(
+            profile_id="api_symbol_lookup",
+            exact_fields=("endpoint_path", "schema_key"),
+            candidate_limit=10,
+        ),
+    )
+
+    assert [candidate.chunk_id for candidate in candidates] == ["chunk:endpoint"]
+    assert candidates[0].matched_fields == ("endpoint_path",)
+
+
+def test_exact_lookup_respects_profile_field_allowlist(session: Session) -> None:
+    _add_chunk(
+        session,
+        chunk_id="chunk:symbol",
+        symbol_path="Widget.render",
+        metadata={"endpoint_path": "Widget.render"},
+    )
+    _add_chunk(
+        session,
+        chunk_id="chunk:symbol-only",
+        symbol_path="Widget.render",
+    )
+    session.commit()
+
+    candidates = ExactLookupRetriever(session).retrieve(
+        RetrievalQuery(query_text="Widget.render"),
+        RetrievalFilters(source_ids=("src:docs",)),
+        ExactRetrievalProfile(
+            profile_id="metadata_only",
+            exact_fields=("endpoint_path",),
+            candidate_limit=10,
+        ),
+    )
+
+    assert [candidate.chunk_id for candidate in candidates] == ["chunk:symbol"]
+    assert candidates[0].matched_fields == ("endpoint_path",)
+
+
+def test_exact_lookup_profile_can_require_active_index_filter(
+    session: Session,
+) -> None:
+    with pytest.raises(ValueError, match="active_index_version"):
+        ExactLookupRetriever(session).retrieve(
+            RetrievalQuery(query_text="Widget.render"),
+            RetrievalFilters(source_ids=("src:docs",)),
+            ExactRetrievalProfile(
+                profile_id="api_symbol_lookup",
+                exact_fields=("symbol_path",),
+                candidate_limit=10,
+                require_active_index=True,
+            ),
+        )
 
 
 def test_filters_are_applied_before_exact_lookup(session: Session) -> None:
@@ -297,6 +365,7 @@ def _add_chunk(
     symbol_path: str | None = None,
     signature_text: str | None = None,
     sanitized_text: str = "safe Config.load docs",
+    metadata: dict[str, str] | None = None,
     sensitivity_class: str = "public",
     license_policy_status: str = "allowed",
     redaction_status: str = "redacted",
@@ -323,6 +392,7 @@ def _add_chunk(
             chunk_kind="section",
             sanitized_text=sanitized_text,
             sanitized_content_hash=f"hash:{chunk_id}",
+            metadata_=metadata or {},
             source_allowlisted=True,
             visibility_label="invited_users",
             sensitivity_class=sensitivity_class,

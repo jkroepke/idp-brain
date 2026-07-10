@@ -26,14 +26,20 @@ from idp_brain.config.models import (
     ExtractorsConfig,
     MemoryConfig,
     ModelsConfig,
-    RetrievalConfig,
     SecurityConfig,
     SourcesConfig,
+)
+from idp_brain.config.retrieval import (
+    CandidateCountsConfig,
+    RetrievalConfig,
+    RetrievalQueryProfileConfig,
+    WeightingConfig,
 )
 from idp_brain.config.sources import format_config_error
 
 __all__ = [
     "AccessConfig",
+    "CandidateCountsConfig",
     "ConfigBundle",
     "ConfigError",
     "ConfigFileNotFoundError",
@@ -46,8 +52,10 @@ __all__ = [
     "ModelsConfig",
     "REQUIRED_CONFIG_FILES",
     "RetrievalConfig",
+    "RetrievalQueryProfileConfig",
     "SecurityConfig",
     "SourcesConfig",
+    "WeightingConfig",
     "format_config_error",
     "load_access_config",
     "load_config_dir",

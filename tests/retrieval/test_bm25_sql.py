@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.dialects import postgresql, sqlite
@@ -13,6 +16,7 @@ from idp_brain.retrieval import (
     RetrievalFilters,
     RetrievalQuery,
 )
+from idp_brain.retrieval.models import BM25_RETRIEVAL_FIELDS
 
 
 @pytest.fixture
@@ -82,8 +86,59 @@ def test_bm25_profile_limits_search_to_configured_safe_fields(
     assert candidates[0].matched_fields == ("artifact_path",)
     with pytest.raises(ValueError, match="Unsupported BM25 field"):
         BM25RetrievalProfile(bm25_fields=("raw_text",))
+    with pytest.raises(ValueError, match="Unsupported BM25 field"):
+        BM25RetrievalProfile(bm25_fields=("schema_key",))
     with pytest.raises(ValueError, match="at least 1 item"):
         BM25RetrievalProfile(bm25_fields=())
+    with pytest.raises(ValueError, match="greater than or equal to 50"):
+        BM25RetrievalProfile(bm25_fields=("artifact_path",), candidate_limit=49)
+
+
+def test_bm25_retriever_rejects_low_limit_override(session: Session) -> None:
+    with pytest.raises(ValueError, match="between 50 and 200"):
+        BM25CandidateRetriever(
+            session,
+            deterministic_fallback=True,
+        ).retrieve(
+            RetrievalQuery(query_text="profile-query"),
+            RetrievalFilters(source_ids=("src:docs",)),
+            BM25RetrievalProfile(bm25_fields=("artifact_path",)),
+            limit=49,
+        )
+
+
+def test_bm25_profile_can_require_active_index_filter(session: Session) -> None:
+    with pytest.raises(ValueError, match="active_index_version"):
+        BM25CandidateRetriever(
+            session,
+            deterministic_fallback=True,
+        ).retrieve(
+            RetrievalQuery(query_text="profile-query"),
+            RetrievalFilters(source_ids=("src:docs",)),
+            BM25RetrievalProfile(
+                bm25_fields=("artifact_path",),
+                require_active_index=True,
+            ),
+        )
+
+
+def test_bm25_migration_indexes_every_runtime_bm25_field() -> None:
+    migration_path = (
+        Path(__file__).parents[2]
+        / "migrations"
+        / "versions"
+        / "0013_chunks_bm25_index.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "chunks_bm25_index_migration",
+        migration_path,
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    bm25_migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bm25_migration)
+
+    assert set(BM25_RETRIEVAL_FIELDS) <= set(bm25_migration.CHUNKS_BM25_FIELDS)
 
 
 def test_bm25_reports_all_matched_safe_fields(session: Session) -> None:

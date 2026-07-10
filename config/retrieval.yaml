@@ -16,15 +16,46 @@ query_profiles:
       - version_label
       - source_type
     vector_index: docs_chunks_hnsw
-    embedding_model: local-ci-embedding
+    embedding_profile_id: local-ci-embedding
     candidate_counts:
       exact_top_k: 10
-      bm25_top_k: 40
-      vector_top_k: 40
-      fused_top_k: 40
+      bm25_top_k: 80
+      vector_top_k: 80
+      fused_top_k: 60
       rerank_top_k: 12
     fusion_method: reciprocal_rank_fusion
-    reranker: local-ci-reranker
+    fusion_weights:
+      exact: 1.0
+      bm25: 1.0
+      vector: 1.0
+      relationship: 0.0
+    reranker_profile_id: local-ci-reranker
+    relationship_traversal:
+      enabled: false
+      relationship_types: []
+      max_depth: 0
+      max_fanout_per_seed: 0
+      max_relationship_candidates: 0
+      direction: outbound
+      cycle_handling: skip_seen
+      seed_sources: []
+    filter_dimensions:
+      - source_allowlist
+      - visibility
+      - sensitivity_class
+      - license_policy_status
+      - version_or_release_scope
+      - active_index_version
+    active_index_behavior:
+      mode: require_active
+      require_filter: true
+    diagnostics:
+      enabled: true
+      include_candidate_counts: true
+      include_profile: true
+      include_filter_summary: true
+      include_relationship_traversal: false
+      include_scores: false
     freshness_weighting:
       enabled: true
       weight: 0.25
@@ -43,6 +74,7 @@ query_profiles:
       - language
       - symbol_path
       - signature_text
+      - import_path
     bm25_fields:
       - sanitized_text
       - symbol_path
@@ -50,15 +82,51 @@ query_profiles:
       - artifact_path
       - language
     vector_index: code_chunks_hnsw
-    embedding_model: local-ci-code-embedding
+    embedding_profile_id: local-ci-code-embedding
     candidate_counts:
       exact_top_k: 20
-      bm25_top_k: 60
-      vector_top_k: 40
-      fused_top_k: 50
+      bm25_top_k: 80
+      vector_top_k: 80
+      fused_top_k: 70
       rerank_top_k: 15
     fusion_method: reciprocal_rank_fusion
-    reranker: local-ci-reranker
+    fusion_weights:
+      exact: 1.0
+      bm25: 0.9
+      vector: 0.8
+      relationship: 0.4
+    reranker_profile_id: local-ci-reranker
+    relationship_traversal:
+      enabled: true
+      relationship_types:
+        - depends_on
+        - impacts
+        - references
+      max_depth: 1
+      max_fanout_per_seed: 8
+      max_relationship_candidates: 30
+      direction: both
+      cycle_handling: skip_seen
+      seed_sources:
+        - exact
+        - fused
+    filter_dimensions:
+      - source_allowlist
+      - visibility
+      - sensitivity_class
+      - license_policy_status
+      - version_or_release_scope
+      - active_index_version
+    active_index_behavior:
+      mode: require_active
+      require_filter: true
+    diagnostics:
+      enabled: true
+      include_candidate_counts: true
+      include_profile: true
+      include_filter_summary: true
+      include_relationship_traversal: true
+      include_scores: false
     freshness_weighting:
       enabled: true
       weight: 0.35
@@ -76,24 +144,65 @@ query_profiles:
       - artifact_path
       - symbol_path
       - schema_path
+      - schema_key
       - endpoint_path
+      - field_name
+      - flag_name
+      - method_name
+      - function_name
+      - error_string
       - signature_text
     bm25_fields:
       - symbol_path
-      - schema_path
-      - endpoint_path
       - signature_text
+      - artifact_path
       - sanitized_text
     vector_index: api_specs_hnsw
-    embedding_model: local-ci-code-embedding
+    embedding_profile_id: local-ci-code-embedding
     candidate_counts:
       exact_top_k: 30
-      bm25_top_k: 30
-      vector_top_k: 20
-      fused_top_k: 30
+      bm25_top_k: 60
+      vector_top_k: 60
+      fused_top_k: 50
       rerank_top_k: 10
     fusion_method: reciprocal_rank_fusion
-    reranker: local-ci-reranker
+    fusion_weights:
+      exact: 1.0
+      bm25: 0.8
+      vector: 0.6
+      relationship: 0.3
+    reranker_profile_id: local-ci-reranker
+    relationship_traversal:
+      enabled: true
+      relationship_types:
+        - defines
+        - references
+        - impacts
+      max_depth: 1
+      max_fanout_per_seed: 6
+      max_relationship_candidates: 20
+      direction: both
+      cycle_handling: skip_seen
+      seed_sources:
+        - exact
+        - bm25
+    filter_dimensions:
+      - source_allowlist
+      - visibility
+      - sensitivity_class
+      - license_policy_status
+      - version_or_release_scope
+      - active_index_version
+    active_index_behavior:
+      mode: require_active
+      require_filter: true
+    diagnostics:
+      enabled: true
+      include_candidate_counts: true
+      include_profile: true
+      include_filter_summary: true
+      include_relationship_traversal: true
+      include_scores: false
     freshness_weighting:
       enabled: true
       weight: 0.3
@@ -112,22 +221,62 @@ query_profiles:
       - release_tag
       - commit_sha
       - artifact_path
+      - first_seen_version
+      - last_seen_version
     bm25_fields:
       - sanitized_text
       - heading_path
       - artifact_path
       - version_label
-      - change_summary
+      - commit_sha
     vector_index: release_notes_hnsw
-    embedding_model: local-ci-embedding
+    embedding_profile_id: local-ci-embedding
     candidate_counts:
       exact_top_k: 15
-      bm25_top_k: 50
-      vector_top_k: 30
-      fused_top_k: 40
+      bm25_top_k: 80
+      vector_top_k: 60
+      fused_top_k: 60
       rerank_top_k: 12
     fusion_method: reciprocal_rank_fusion
-    reranker: local-ci-reranker
+    fusion_weights:
+      exact: 1.0
+      bm25: 1.0
+      vector: 0.8
+      relationship: 0.5
+    reranker_profile_id: local-ci-reranker
+    relationship_traversal:
+      enabled: true
+      relationship_types:
+        - version_lineage
+        - introduced_in
+        - removed_in
+        - changed_by
+        - derived_from
+      max_depth: 2
+      max_fanout_per_seed: 6
+      max_relationship_candidates: 40
+      direction: both
+      cycle_handling: skip_seen
+      seed_sources:
+        - exact
+        - fused
+    filter_dimensions:
+      - source_allowlist
+      - visibility
+      - sensitivity_class
+      - license_policy_status
+      - version_or_release_scope
+      - active_index_version
+    active_index_behavior:
+      mode: require_active
+      require_filter: true
+    diagnostics:
+      enabled: true
+      include_candidate_counts: true
+      include_profile: true
+      include_filter_summary: true
+      include_relationship_traversal: true
+      include_scores: false
     freshness_weighting:
       enabled: true
       weight: 0.6
@@ -147,20 +296,55 @@ query_profiles:
       - citation_id
     bm25_fields:
       - sanitized_text
-      - claim_subject
-      - claim_predicate
       - artifact_path
       - version_label
     vector_index: conflict_claims_hnsw
-    embedding_model: local-ci-embedding
+    embedding_profile_id: local-ci-embedding
     candidate_counts:
       exact_top_k: 20
-      bm25_top_k: 40
-      vector_top_k: 40
-      fused_top_k: 50
+      bm25_top_k: 80
+      vector_top_k: 80
+      fused_top_k: 70
       rerank_top_k: 20
     fusion_method: reciprocal_rank_fusion
-    reranker: local-ci-reranker
+    fusion_weights:
+      exact: 1.0
+      bm25: 0.9
+      vector: 0.9
+      relationship: 0.8
+    reranker_profile_id: local-ci-reranker
+    relationship_traversal:
+      enabled: true
+      relationship_types:
+        - claim_conflicts
+        - conflicts_with
+      max_depth: 1
+      max_fanout_per_seed: 10
+      max_relationship_candidates: 40
+      direction: both
+      cycle_handling: skip_seen
+      seed_sources:
+        - exact
+        - bm25
+        - vector
+        - fused
+    filter_dimensions:
+      - source_allowlist
+      - visibility
+      - sensitivity_class
+      - license_policy_status
+      - version_or_release_scope
+      - active_index_version
+    active_index_behavior:
+      mode: require_active
+      require_filter: true
+    diagnostics:
+      enabled: true
+      include_candidate_counts: true
+      include_profile: true
+      include_filter_summary: true
+      include_relationship_traversal: true
+      include_scores: false
     freshness_weighting:
       enabled: true
       weight: 0.2

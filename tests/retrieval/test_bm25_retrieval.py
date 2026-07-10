@@ -29,7 +29,7 @@ def test_bm25_retriever_returns_scored_sanitized_candidates(
                 profile_id="bm25_integration",
                 bm25_fields=("sanitized_text", "heading_path", "artifact_path"),
             ),
-            limit=5,
+            limit=50,
         )
 
     assert [candidate.chunk_id for candidate in candidates] == [

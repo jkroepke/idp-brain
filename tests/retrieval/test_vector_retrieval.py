@@ -57,7 +57,7 @@ def test_vector_retriever_returns_ranked_metadata_only(session: Session) -> None
         session,
         provider_registry=EmbeddingProviderRegistry([_embedding_profile()]),
         deterministic_fallback=True,
-    ).retrieve(query, filters, profile, limit=5)
+    ).retrieve(query, filters, profile, limit=50)
 
     assert [candidate.chunk_id for candidate in candidates] == [
         "chunk:expected",
@@ -110,7 +110,7 @@ def test_vector_filters_apply_before_candidates_are_exposed(session: Session) ->
         session,
         provider_registry=EmbeddingProviderRegistry([_embedding_profile()]),
         deterministic_fallback=True,
-    ).retrieve(query, filters, profile, limit=10)
+    ).retrieve(query, filters, profile, limit=50)
 
     assert [candidate.chunk_id for candidate in candidates] == [
         "chunk:expected",
@@ -176,7 +176,7 @@ def test_vector_retrieval_requires_active_model_and_index_filters(
         session,
         provider_registry=EmbeddingProviderRegistry([_embedding_profile()]),
         deterministic_fallback=True,
-    ).retrieve(query, filters, profile, limit=10)
+    ).retrieve(query, filters, profile, limit=50)
 
     assert candidates[0].chunk_id == "chunk:expected"
     assert candidates[0].diagnostics["cosine_distance"] == pytest.approx(0.0, abs=1e-7)
@@ -206,13 +206,13 @@ def test_vector_retrieval_requires_active_model_and_index_profiles(
         deterministic_fallback=True,
     )
 
-    assert retriever.retrieve(query, filters, profile, limit=10) == []
+    assert retriever.retrieve(query, filters, profile, limit=50) == []
 
     model.promotion_status = "mock"
     index_version.status = "retired"
     session.commit()
 
-    assert retriever.retrieve(query, filters, profile, limit=10) == []
+    assert retriever.retrieve(query, filters, profile, limit=50) == []
 
 
 def test_inactive_or_missing_profiles_return_before_provider_embed(
@@ -233,7 +233,7 @@ def test_inactive_or_missing_profiles_return_before_provider_embed(
         deterministic_fallback=True,
     )
 
-    assert retriever.retrieve(query, filters, profile, limit=10) == []
+    assert retriever.retrieve(query, filters, profile, limit=50) == []
     assert registry.resolve_calls == 0
     assert registry.provider.embed_calls == 0
 
@@ -244,14 +244,56 @@ def test_inactive_or_missing_profiles_return_before_provider_embed(
         embedding_profile_id="docs_default",
         embedding_model_id="embedding-model:mock",
         index_version_id="index-version:missing",
-        candidate_limit=10,
+        candidate_limit=50,
         hnsw_ef_search=64,
         exact_search_threshold=10,
     )
 
-    assert retriever.retrieve(query, filters, missing_index_profile, limit=10) == []
+    assert retriever.retrieve(query, filters, missing_index_profile, limit=50) == []
     assert registry.resolve_calls == 0
     assert registry.provider.embed_calls == 0
+
+
+def test_vector_profile_rejects_low_candidate_limit() -> None:
+    with pytest.raises(ValueError, match="greater than or equal to 50"):
+        VectorRetrievalProfile(
+            profile_id="docs_vector",
+            embedding_profile_id="docs_default",
+            embedding_model_id="embedding-model:mock",
+            index_version_id="index-version:test",
+            candidate_limit=49,
+            hnsw_ef_search=64,
+            exact_search_threshold=10,
+        )
+
+
+def test_vector_retriever_rejects_low_limit_override(session: Session) -> None:
+    with pytest.raises(ValueError, match="between 50 and 200"):
+        VectorCandidateRetriever(
+            session,
+            provider_registry=EmbeddingProviderRegistry([_embedding_profile()]),
+            deterministic_fallback=True,
+        ).retrieve(
+            RetrievalQuery(query_text="vector retrieval"),
+            RetrievalFilters(),
+            _vector_profile(),
+            limit=49,
+        )
+
+
+def test_vector_profile_can_require_active_index_filter(session: Session) -> None:
+    profile = _vector_profile().model_copy(update={"require_active_index": True})
+
+    with pytest.raises(ValueError, match="active_index_version"):
+        VectorCandidateRetriever(
+            session,
+            provider_registry=EmbeddingProviderRegistry([_embedding_profile()]),
+            deterministic_fallback=True,
+        ).retrieve(
+            RetrievalQuery(query_text="vector retrieval"),
+            RetrievalFilters(),
+            profile,
+        )
 
 
 def test_external_embedding_provider_fails_closed(session: Session) -> None:
@@ -299,7 +341,7 @@ def test_vector_retriever_uses_pgvector_distance_ordering(
         candidates = VectorCandidateRetriever(
             current_session,
             provider_registry=EmbeddingProviderRegistry([_embedding_profile()]),
-        ).retrieve(query, filters, profile, limit=5)
+        ).retrieve(query, filters, profile, limit=50)
 
     assert [candidate.chunk_id for candidate in candidates] == [
         "chunk:expected",
@@ -361,7 +403,7 @@ def _vector_profile(
         embedding_profile_id=embedding_profile_id,
         embedding_model_id="embedding-model:mock",
         index_version_id="index-version:test",
-        candidate_limit=10,
+        candidate_limit=50,
         hnsw_ef_search=64,
         exact_search_threshold=10,
     )
