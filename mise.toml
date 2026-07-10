@@ -13,6 +13,8 @@ zizmor = "latest"
 python.uv_venv_auto = "create|source"
 
 [env]
+DYLD_LIBRARY_PATH = "/opt/homebrew/opt/libpq/lib"
+_.path = "/opt/homebrew/opt/libpq/bin"
 _.python.venv = { path = ".venv", create = true }
 
 [tasks.install]

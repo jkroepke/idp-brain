@@ -71,7 +71,7 @@ def _create_repository(tmp_path: Path) -> Path:
     (repository / "schema.json").write_text('{"title":"Fixture"}\n', encoding="utf-8")
     run_git(repository, "add", "schema.json")
     run_git(repository, "commit", "-m", "rotate password hunter2-ingestion")
-    run_git(repository, "tag", "v1.0.0")
+    run_git(repository, "tag", "--no-sign", "v1.0.0")
     return repository
 
 
