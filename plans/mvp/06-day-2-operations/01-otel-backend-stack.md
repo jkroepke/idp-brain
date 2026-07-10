@@ -43,6 +43,7 @@ Add a complete local observability backend stack to `docker-compose.yaml` with G
    - configure a bounded collection interval and initial delay.
    - route its metric output through the same OpenTelemetry metrics pipeline and Prometheus OTLP receiver as application metrics.
    - enable the receiver's consistent separate schema attribute feature only when supported by the pinned Alloy build and covered by tests.
+   - treat the receiver as a beta metrics component and pin the Alloy version so receiver behavior does not drift unexpectedly.
 5. Keep PostgreSQL query sample and top-query event collection disabled. Those optional receiver features can expose query text and query plans and require broader `pg_monitor` access. The MVP collects database metrics only and must not export SQL text, query plans, bind values, or source content.
 6. Route traces from Alloy to Tempo through OTLP. Use Tempo monolithic mode and local storage for the development stack.
 7. Route logs from Alloy to Loki through its native OTLP/HTTP endpoint. Keep structured metadata enabled and configure only a small reviewed set of resource attributes as index labels.
