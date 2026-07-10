@@ -74,20 +74,21 @@ Add vendor-neutral OpenTelemetry tracing for request receipt, corpus eligibility
    - keep SQLCommenter disabled.
    - remove SQL text, parameters, credentials, and unbounded database object names from spans.
    - verify database errors expose only sanitized exception type and safe status.
-9. Configure `ThreadingInstrumentor` once before application threads, timers, or `ThreadPoolExecutor` workers are created. It propagates the active OpenTelemetry context across threads but must not create standalone spans.
-10. Verify context propagation through `threading.Thread`, `threading.Timer`, and `concurrent.futures.ThreadPoolExecutor`. Child work must remain linked to the parent trace without sharing unsafe mutable context.
-11. Configure `URLLib3Instrumentor` for outbound urllib3 requests:
+9. Keep application database tracing separate from the collector-side PostgreSQL receiver in Steps 6.1 and 6.2. The receiver produces database metrics; SQLAlchemy and psycopg2 instrumentation produce application client spans. Do not try to infer query text from receiver events or join on raw SQL.
+10. Configure `ThreadingInstrumentor` once before application threads, timers, or `ThreadPoolExecutor` workers are created. It propagates the active OpenTelemetry context across threads but must not create standalone spans.
+11. Verify context propagation through `threading.Thread`, `threading.Timer`, and `concurrent.futures.ThreadPoolExecutor`. Child work must remain linked to the parent trace without sharing unsafe mutable context.
+12. Configure `URLLib3Instrumentor` for outbound urllib3 requests:
     - use a URL filter that strips query parameters before span attributes are created.
     - configure an exclude list for Alloy OTLP endpoints, the Pyroscope profile receiver, backend health checks, and other internal telemetry destinations to avoid recursive self-observability.
     - do not capture request or response headers by default.
     - do not capture request or response bodies.
     - allow only scheme, normalized host, port, HTTP method, status, and a bounded route or path template.
     - use request and response hooks only for additional sanitization or bounded attributes.
-12. Initialize every contrib instrumentor idempotently and uninstrument it during isolated tests when required. Repeated CLI invocations in one process must not stack wrappers or duplicate spans.
-13. Record exceptions on spans with sanitized error class and safe message only. Uncaught process, thread, and asyncio exceptions are handled by the logging instrumentation from Step 6.3 and must correlate with the active trace when context exists.
-14. Propagate correlation IDs and trace context across CLI retrieval, MCP tool calls, eval runs, database calls, outbound HTTP calls, threaded work, retrieval events, logs, and metrics.
-15. Export traces through OTLP to Alloy when enabled. Do not send application telemetry directly to the traces backend.
-16. Keep deterministic tests by using the OpenTelemetry in-memory span exporter.
+13. Initialize every contrib instrumentor idempotently and uninstrument it during isolated tests when required. Repeated CLI invocations in one process must not stack wrappers or duplicate spans.
+14. Record exceptions on spans with sanitized error class and safe message only. Uncaught process, thread, and asyncio exceptions are handled by the logging instrumentation from Step 6.3 and must correlate with the active trace when context exists.
+15. Propagate correlation IDs and trace context across CLI retrieval, MCP tool calls, eval runs, database calls, outbound HTTP calls, threaded work, retrieval events, logs, and metrics.
+16. Export traces through OTLP to Alloy when enabled. Do not send application telemetry directly to the traces backend.
+17. Keep deterministic tests by using the OpenTelemetry in-memory span exporter.
 
 ## Tests And Checks
 
@@ -109,6 +110,7 @@ Add vendor-neutral OpenTelemetry tracing for request receipt, corpus eligibility
 
 - Retrieval, MCP, eval, database, outbound HTTP, and threaded paths emit or propagate the expected OpenTelemetry trace context when tracing is enabled.
 - SQLAlchemy instrumentation covers ORM-managed engines, while psycopg2 instrumentation is limited to direct connections and never duplicates the same database operation.
+- Collector-side PostgreSQL receiver metrics and application-side database spans remain separate, complementary telemetry paths.
 - Threading instrumentation propagates context through standard threads, timers, and thread-pool workers without generating standalone telemetry.
 - urllib3 instrumentation creates sanitized outbound HTTP spans and excludes the observability pipeline itself.
 - Trace attributes and events are sanitized and bounded.
