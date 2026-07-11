@@ -35,6 +35,21 @@ Build a local-first Python 3.14 pipeline that ingests configured technical sourc
 - Do not recreate the former relational schema as many Weaviate collections.
 - Do not implement an application-owned MCP server unless a measured requirement cannot be met by Weaviate MCP, RBAC, tenants, collection design, and returned properties.
 - Keep CI deterministic and independent from paid external providers.
+- Read Step 5.0 before implementation. It is normative and overrides requirements implied by the existing codebase, Phase 4 behavior, older plan files, and legacy tests.
+
+## Explicitly Removed MVP Requirements
+
+An implementation agent must not port these legacy capabilities merely because matching code already exists:
+
+- query-time trusted corpus eligibility derivation
+- mandatory application-side source, visibility, sensitivity, license, version, active-state, or index-generation filtering
+- application-owned deterministic exact retrieval
+- application-owned authority or freshness score adjustments
+- separate citation-object assembly
+- evidence-bundle assembly
+- custom MCP `fetch`, `explain_search`, or `list_sources` tools
+
+Step 5.0 defines the Weaviate-native replacement for each item and the only conditions under which it may be reconsidered.
 
 ## Phase Overview
 
@@ -103,6 +118,7 @@ This phase is already implemented. Its PostgreSQL, ParadeDB, pgvector, RRF, rera
 ## Phase 5: Weaviate Architecture Reset
 
 - [Phase directory](05-cli-mcp-evaluation-operations/)
+- [5.0 Normative Weaviate Reset Rules](05-cli-mcp-evaluation-operations/00-weaviate-reset-rules.md)
 - [5.1 Ingest CLI Commands](05-cli-mcp-evaluation-operations/01-ingest-cli-commands.md)
 - [5.2 Weaviate Vertical Slice](05-cli-mcp-evaluation-operations/02-weaviate-vertical-slice.md)
 - [5.3 Weaviate Runtime And Collection](05-cli-mcp-evaluation-operations/03-weaviate-runtime-and-collection.md)
