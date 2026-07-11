@@ -334,6 +334,8 @@ class ExactLookupRetriever:
                 "authority_rank": row["authority_rank"],
                 "path_specificity": row["path_specificity"],
             },
+            sanitized_excerpt=row["sanitized_text"],
+            sanitized_excerpt_trusted=True,
         )
 
 

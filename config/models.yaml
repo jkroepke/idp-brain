@@ -135,6 +135,12 @@ reranker_profiles:
     deterministic: true
     dimensions: null
     token_limit: 512
+    candidate_limit: 50
+    timeout_seconds: 10
+    max_text_length: 2048
+    required_env_vars: []
+    allow_fallback: false
+    required: true
     options:
       stable_sort: true
       seed: 31
@@ -147,6 +153,12 @@ reranker_profiles:
     deterministic: false
     dimensions: null
     token_limit: 4096
+    candidate_limit: 50
+    timeout_seconds: 15
+    max_text_length: 4096
+    required_env_vars: [COHERE_API_KEY]
+    allow_fallback: true
+    required: false
     options:
       requires_api_key: true
 
@@ -158,6 +170,12 @@ reranker_profiles:
     deterministic: false
     dimensions: null
     token_limit: 4096
+    candidate_limit: 50
+    timeout_seconds: 15
+    max_text_length: 4096
+    required_env_vars: [JINA_API_KEY]
+    allow_fallback: true
+    required: false
     options:
       requires_api_key: true
 
@@ -169,6 +187,12 @@ reranker_profiles:
     deterministic: false
     dimensions: null
     token_limit: 4096
+    candidate_limit: 50
+    timeout_seconds: 30
+    max_text_length: 4096
+    required_env_vars: []
+    allow_fallback: true
+    required: false
     options:
       requires_local_model_files: true
 

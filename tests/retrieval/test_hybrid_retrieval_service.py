@@ -81,6 +81,7 @@ def service(expander: Expander | None = None) -> HybridRetrievalService:
         bm25_retriever=Retriever([item("lexical", "bm25", 1)]),
         vector_retriever=Retriever([item("dense", "vector", 1)]),
         relationship_expander=expander,
+        reranker=lambda candidates, limit: candidates[:limit],
     )
 
 

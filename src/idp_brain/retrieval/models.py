@@ -117,6 +117,8 @@ class Candidate(BaseModel):
     matched_fields: tuple[str, ...]
     metadata: dict[str, Any]
     diagnostics: dict[str, Any] = Field(default_factory=dict)
+    sanitized_excerpt: str | None = None
+    sanitized_excerpt_trusted: bool = False
 
 
 class FusedCandidate(BaseModel):
@@ -128,6 +130,12 @@ class FusedCandidate(BaseModel):
     fused_score: float
     path_candidates: dict[str, Candidate]
     metadata: dict[str, Any] = Field(default_factory=dict)
+    fused_rank: int | None = None
+    reranked_rank: int | None = None
+    rerank_score: float | None = None
+    rerank_diagnostics: dict[str, Any] = Field(default_factory=dict)
+    sanitized_excerpt: str | None = None
+    sanitized_excerpt_trusted: bool = False
 
     @property
     def retrieval_paths(self) -> tuple[str, ...]:
