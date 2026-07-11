@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Protocol
 
 from idp_brain.config.retrieval import RetrievalQueryProfileConfig
+from idp_brain.ingestion.runs import sanitize_diagnostic_text
 from idp_brain.reranking.providers import (
     RerankerRegistry,
     RerankerUnavailableError,
     rerank_fused_candidates,
 )
+from idp_brain.retrieval.evidence import EvidenceAssembler, EvidenceBundle
 from idp_brain.retrieval.fusion import reciprocal_rank_fusion
 from idp_brain.retrieval.models import (
     Candidate,
@@ -20,6 +22,7 @@ from idp_brain.retrieval.models import (
     RetrievalQuery,
 )
 from idp_brain.retrieval.profiles import ResolvedQueryProfile
+from idp_brain.retrieval.query_intent import parse_query_intent
 
 
 class CandidateRetriever(Protocol):
@@ -60,6 +63,7 @@ class HybridRetrievalService:
         | None = None,
         reranker_registry: RerankerRegistry | None = None,
         rank_constant: int | None = None,
+        evidence_assembler: EvidenceAssembler | None = None,
     ) -> None:
         self._exact = exact_retriever
         self._bm25 = bm25_retriever
@@ -68,6 +72,7 @@ class HybridRetrievalService:
         self._reranker = reranker
         self._reranker_registry = reranker_registry
         self._rank_constant = rank_constant
+        self._evidence_assembler = evidence_assembler
 
     def retrieve(
         self,
@@ -122,6 +127,30 @@ class HybridRetrievalService:
             candidate_lists={key: tuple(value) for key, value in paths.items()},
             fused=tuple(fused),
             ranked=tuple(ranked),
+        )
+
+    def retrieve_evidence(
+        self,
+        query: RetrievalQuery,
+        filters: RetrievalFilters,
+        profile: ResolvedQueryProfile,
+    ) -> EvidenceBundle:
+        """Retrieve and release only the strict sanitized evidence contract."""
+
+        if self._evidence_assembler is None:
+            raise ValueError("evidence assembly requires a filtered evidence fetcher")
+        result = self.retrieve(query, filters, profile)
+        sanitized_query = sanitize_diagnostic_text(query.query_text)
+        intent = asdict(parse_query_intent(sanitized_query))
+        return self._evidence_assembler.assemble(
+            query=query.query_text,
+            normalized_query_intent=intent,
+            candidates=result.ranked,
+            query_profile_id=profile.config.profile_id,
+            active_index_version_id=filters.active_index_version_id,
+            token_budget=profile.config.token_budget,
+            filters_applied=profile.config.filter_dimensions,
+            filters=filters,
         )
 
     def _relationship_seeds(
