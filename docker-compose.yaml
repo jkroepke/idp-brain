@@ -6,6 +6,44 @@
 # the local image path is explicitly intended to provide ParadeDB pg_search.
 # Extension creation remains migration-managed in Phase 1.6.
 services:
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.38.1
+    ports:
+      - "127.0.0.1:${IDP_BRAIN_WEAVIATE_HTTP_PORT:-58080}:8080"
+      - "127.0.0.1:${IDP_BRAIN_WEAVIATE_GRPC_PORT:-50051}:50051"
+    environment:
+      # Disposable local-only credentials. Override both keys outside tests.
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "false"
+      AUTHENTICATION_APIKEY_ENABLED: "true"
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${IDP_BRAIN_WEAVIATE_WRITER_KEY:-local-mvp52-writer-key},${IDP_BRAIN_WEAVIATE_READER_KEY:-local-mvp52-reader-key}
+      AUTHENTICATION_APIKEY_USERS: idp-brain-writer,idp-brain-reader
+      AUTHORIZATION_ENABLE_RBAC: "true"
+      AUTHORIZATION_RBAC_ROOT_USERS: idp-brain-writer
+      CLUSTER_HOSTNAME: idp-brain-weaviate
+      DEFAULT_VECTORIZER_MODULE: text2vec-transformers
+      ENABLE_MODULES: text2vec-transformers
+      MCP_SERVER_ENABLED: "true"
+      MCP_SERVER_WRITE_ACCESS_ENABLED: "false"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      QUERY_DEFAULTS_LIMIT: "20"
+      TRANSFORMERS_INFERENCE_API: http://text2vec-transformers:8080
+    volumes:
+      - idp_brain_weaviate:/var/lib/weaviate
+    depends_on:
+      text2vec-transformers:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+
+  text2vec-transformers:
+    image: cr.weaviate.io/semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
+    environment:
+      ENABLE_CUDA: "0"
+
   postgres:
     image: paradedb/paradedb:0.24.2-pg18
     environment:
@@ -28,6 +66,10 @@ services:
       start_period: 10s
 
 volumes:
+  idp_brain_weaviate:
+    labels:
+      idp-brain.scope: "local-development"
+      idp-brain.disposable: "true"
   idp_brain_postgres18_cluster:
     labels:
       idp-brain.scope: "local-development"
