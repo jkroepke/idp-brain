@@ -104,7 +104,7 @@ run = [
 
 [tasks.up]
 description = "Start the local runtime"
-run = "docker compose up --build --wait --wait-timeout 120 postgres"
+run = "docker compose up --build --wait --wait-timeout 120 postgres weaviate"
 
 [tasks.down]
 description = "Stop the local runtime"
@@ -140,7 +140,8 @@ uv run pytest -m integration \
   tests/db/test_exact_lookup_indexes.py \
   tests/retrieval/test_bm25_retrieval.py \
   tests/retrieval/test_bm25_extension_smoke.py \
-  tests/retrieval/test_vector_extension_smoke.py
+  tests/retrieval/test_vector_extension_smoke.py \
+  tests/integration/test_weaviate_vertical_slice.py
 '''
 
 [tasks."db:reset"]
