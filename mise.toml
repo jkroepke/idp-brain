@@ -54,12 +54,12 @@ run = "actionlint"
 
 [tasks."lint:workflows"]
 description = "Scan GitHub Actions workflows with zizmor"
-wait_for = ["install"]
+wait_for = ["install", "lint:actions"]
 run = "zizmor --fix=safe .github/workflows/*"
 
 [tasks."lint:yaml"]
 description = "Lint tracked and untracked YAML files"
-wait_for = ["install"]
+wait_for = ["install", "lint:workflows"]
 run = '''
 yaml_files=$(git ls-files --cached --others --exclude-standard '*.yaml' '*.yml')
 if [ -n "$yaml_files" ]; then
