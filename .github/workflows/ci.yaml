@@ -34,7 +34,11 @@ jobs:
         run: mise run install
 
       - name: Run validation
-        run: mise run ci
+        run: |
+          status=0
+          mise run ci > /tmp/mise-ci.log 2>&1 || status=$?
+          tail -n 120 /tmp/mise-ci.log
+          exit "$status"
 
       - name: Stop local runtime
         if: always()
