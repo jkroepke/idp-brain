@@ -1,57 +1,43 @@
 # MVP Implementation Plan
 
-This README is the operating guide for the `idp-brain` MVP plan. Follow the
-steps in order and treat every step file as an implementation contract.
+This README is the operating guide for the `idp-brain` MVP plan. Follow the steps in order and treat every step file as an implementation contract.
 
 ## MVP Goal
 
-Build a local-first Python 3.14 retrieval pipeline that ingests configured
-technical sources, persists only sanitized evidence, indexes it with PostgreSQL
-18, ParadeDB `pg_search`, and pgvector, and exposes citation-backed retrieval
-through CLI and read-only MCP tools.
+Build a local-first Python 3.14 retrieval pipeline that ingests configured technical sources, persists only sanitized evidence, and exposes citation-backed retrieval through CLI and read-only MCP tools.
 
-The MVP is complete when ingestion, exact/BM25/vector retrieval, evidence
-bundles, MCP tools, evaluation, CI, the local observability operations stack,
-OpenTelemetry contrib instrumentation, collector-native PostgreSQL metrics,
-OpenTelemetry-correlated continuous profiling, database backup and restore, and
-Python 3.14 free-threaded validation work.
+Phases 1 through 5 establish and evaluate the original PostgreSQL, ParadeDB, and pgvector implementation. Phase 6 uses that measured baseline to migrate the complete knowledge and retrieval path to Weaviate. After the cutover, Weaviate is the only required persistent store and owns object storage, vectorization, BM25F, vector indexing, metadata filtering, and hybrid fusion.
+
+The MVP is complete when ingestion, exact and hybrid retrieval, evidence bundles, MCP tools, evaluation, the Weaviate migration, CI, the local observability stack, OpenTelemetry instrumentation, Weaviate monitoring, continuous profiling, backup and restore, and Python 3.14 free-threaded validation work together.
 
 ## Execution Rules
 
 - Complete steps in order.
 - Keep one focused commit per step.
 - Run every listed test and check.
-- Do not persist, embed, log, or return raw unsanitized chunks.
-- Apply source, license, sensitivity, redaction, version, and active-index
-  filters before every retrieval subquery.
+- Do not persist, vectorize, log, or return raw unsanitized chunks.
+- Apply source, license, sensitivity, redaction, version, active-state, and collection-generation filters to every retrieval request.
 - Keep CI deterministic and independent from paid or private external services.
-- Treat caller-provided MCP context only as a hint. Trusted corpus eligibility
-  is derived server-side.
+- Treat caller-provided MCP context only as a hint. Trusted corpus eligibility is derived server-side.
 - Do not invent version lineage or citations.
+- During Phase 6, keep the old retrieval path only as a migration oracle. Do not add new features to it.
+- After Phase 6, do not retain PostgreSQL, ParadeDB, pgvector, SQLAlchemy, Alembic, or psycopg as runtime dependencies.
 
 ## Phase Overview
 
-Phase 1 establishes the Python project, task runner, local PostgreSQL runtime,
-migrations, extension checks, and CI baseline.
+Phase 1 establishes the Python project, task runner, local PostgreSQL runtime, migrations, extension checks, and CI baseline.
 
-Phase 2 defines configuration, corpus policy, redaction, licensing, indexing,
-and relational data models.
+Phase 2 defines configuration, corpus policy, redaction, licensing, indexing, and relational data models.
 
-Phase 3 implements source ingestion, extraction, redaction-before-persistence,
-structure-aware chunking, incremental updates, and tombstones.
+Phase 3 implements source ingestion, extraction, redaction-before-persistence, structure-aware chunking, incremental updates, and tombstones.
 
-Phase 4 implements embeddings, ParadeDB BM25, pgvector, exact lookup, corpus
-filtering, fusion, reranking, evidence bundles, and retrieval tests.
+Phase 4 implements embeddings, ParadeDB BM25, pgvector, exact lookup, corpus filtering, fusion, reranking, evidence bundles, and retrieval tests.
 
-Phase 5 exposes the system through CLI and read-only MCP tools and adds retrieval
-evaluation, thresholds, and deterministic GitHub Actions evaluation.
+Phase 5 exposes the system through CLI and read-only MCP tools and adds retrieval evaluation, thresholds, and deterministic GitHub Actions evaluation.
 
-Phase 6 contains day-2 operations: the complete local observability stack,
-OpenTelemetry metrics, logs and traces, Python contrib instrumentation for
-logging, exceptions, SQLAlchemy, psycopg2, threading and urllib3,
-collector-native PostgreSQL metrics, OpenTelemetry-correlated continuous
-profiling, database backup and restore, and a final Python 3.14 free-threaded
-integration test with the global interpreter lock disabled.
+Phase 6 migrates all persistent knowledge and retrieval responsibilities from PostgreSQL, ParadeDB, and pgvector to Weaviate. It defines collections and deterministic IDs, backfills sanitized data, moves vectorization and hybrid search into Weaviate, validates a shadow path, cuts over CLI and MCP, and removes the old database stack.
+
+Phase 7 contains day-2 operations: the complete local observability stack, OpenTelemetry metrics, logs and traces, Weaviate metrics, OpenTelemetry-correlated continuous profiling, Weaviate backup and restore, and a final Python 3.14 free-threaded integration test with the global interpreter lock disabled.
 
 ## Phase 1: Skeleton And Local Runtime
 
@@ -93,6 +79,8 @@ integration test with the global interpreter lock disabled.
 
 ## Phase 4: Embeddings, BM25, pgvector, And Retrieval
 
+This phase remains the measurable migration baseline. Do not extend it after Phase 6 starts.
+
 - [Phase directory](04-embeddings-bm25-pgvector-retrieval/)
 - [4.1 Embedding Provider Interface](04-embeddings-bm25-pgvector-retrieval/01-embedding-provider-interface.md)
 - [4.2 Embedding Jobs And Vector Storage](04-embeddings-bm25-pgvector-retrieval/02-embedding-jobs-and-vector-storage.md)
@@ -123,24 +111,32 @@ integration test with the global interpreter lock disabled.
 - [5.10 Evaluation Thresholds And CI Gates](05-cli-mcp-evaluation-operations/10-evaluation-thresholds-and-ci-gates.md)
 - [5.13 GitHub Actions Eval](05-cli-mcp-evaluation-operations/13-github-actions-eval.md)
 
-## Phase 6: Day-2 Operations And OpenTelemetry
+## Phase 6: Migrate From ParadeDB To Weaviate
 
-Application metrics, logs, and traces use OpenTelemetry APIs and OTLP.
-Prometheus receives metrics through its native OTLP receiver. Grafana Alloy's
-collector-native PostgreSQL receiver supplies database metrics through the same
-metrics pipeline. Python contrib instrumentation covers logging, uncaught
-exceptions, SQLAlchemy-managed database access, direct psycopg2 connections,
-thread context propagation, and urllib3 client calls. Continuous Python profiles
-are linked to OpenTelemetry root spans with `pyroscope-otel` and routed through
-Grafana Alloy's Pyroscope-compatible receiver to Pyroscope. The application does
-not expose a metrics scrape endpoint and does not use backend-specific metrics
-instrumentation.
+Phase 6 treats the existing PostgreSQL implementation as a temporary source and regression oracle. The target has one persistent store: Weaviate.
 
-- [Phase directory](06-day-2-operations/)
-- [6.1 OpenTelemetry Backend Stack](06-day-2-operations/01-otel-backend-stack.md)
-- [6.2 OpenTelemetry Metrics](06-day-2-operations/02-otel-metrics.md)
-- [6.3 OpenTelemetry Logging](06-day-2-operations/03-otel-logging.md)
-- [6.4 OpenTelemetry Traces](06-day-2-operations/04-otel-traces.md)
-- [6.5 Docker Compose Database Backup](06-day-2-operations/05-database-backup.md)
-- [6.6 OpenTelemetry Span Profiling](06-day-2-operations/06-otel-profiling.md)
-- [6.7 Python 3.14 Free-Threaded Integration Test](06-day-2-operations/07-free-threaded-integration-test.md)
+- [Phase directory](06-weaviate-migration/)
+- [6.1 Architecture Decision And Migration Guardrails](06-weaviate-migration/01-architecture-decision-and-guardrails.md)
+- [6.2 Weaviate Runtime And Dependency Replacement](06-weaviate-migration/02-runtime-and-dependencies.md)
+- [6.3 Collection Schema And Deterministic IDs](06-weaviate-migration/03-collections-and-deterministic-ids.md)
+- [6.4 Sanitized Data Export And Object Mapping](06-weaviate-migration/04-data-export-and-object-mapping.md)
+- [6.5 Batch Import, Vectorization, And Index Build](06-weaviate-migration/05-batch-import-vectorization-and-indexes.md)
+- [6.6 Hybrid, Exact, And Structured Retrieval](06-weaviate-migration/06-retrieval-cutover.md)
+- [6.7 Corpus Eligibility, Citations, And Evidence Bundles](06-weaviate-migration/07-policy-citations-and-evidence.md)
+- [6.8 Shadow Evaluation And Relevance Parity](06-weaviate-migration/08-shadow-evaluation.md)
+- [6.9 Cutover, Backup, Restore, And Rollback](06-weaviate-migration/09-cutover-backup-and-rollback.md)
+- [6.10 Remove PostgreSQL, ParadeDB, And pgvector](06-weaviate-migration/10-remove-postgres-stack.md)
+- [6.11 Migration Test Suite And Completion Gate](06-weaviate-migration/11-migration-test-suite.md)
+
+## Phase 7: Day-2 Operations And OpenTelemetry
+
+Application metrics, logs, and traces use OpenTelemetry APIs and OTLP. Grafana Alloy receives application telemetry and scrapes Weaviate's Prometheus-compatible metrics. Continuous Python profiles are linked to OpenTelemetry root spans with `pyroscope-otel` and routed through Alloy to Pyroscope.
+
+- [Phase directory](07-day-2-operations/)
+- [7.1 OpenTelemetry Backend Stack](07-day-2-operations/01-otel-backend-stack.md)
+- [7.2 OpenTelemetry Metrics And Weaviate Monitoring](07-day-2-operations/02-otel-metrics.md)
+- [7.3 OpenTelemetry Logging](07-day-2-operations/03-otel-logging.md)
+- [7.4 OpenTelemetry Traces](07-day-2-operations/04-otel-traces.md)
+- [7.5 Weaviate Backup And Restore](07-day-2-operations/05-weaviate-backup.md)
+- [7.6 OpenTelemetry Span Profiling](07-day-2-operations/06-otel-profiling.md)
+- [7.7 Python 3.14 Free-Threaded Integration Test](07-day-2-operations/07-free-threaded-integration-test.md)
