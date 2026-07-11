@@ -8,13 +8,16 @@ import httpx
 import pytest
 import weaviate
 from weaviate.auth import Auth
+from weaviate.classes.config import Configure, VectorDistances
 from weaviate.exceptions import InsufficientPermissionsError
 
+from idp_brain.config.weaviate import load_weaviate_config
 from idp_brain.ingestion.chunking import ChunkingPipeline
 from idp_brain.ingestion.extractors import ArtifactExtractionContext, MarkdownExtractor
 from idp_brain.ingestion.redaction_stage import RedactionStage
 from idp_brain.weaviate_slice import (
-    COLLECTION_NAME,
+    IncompatibleCollectionError,
+    _schema_properties,
     bootstrap_collection,
     configure_reader_role,
     hybrid_search,
@@ -25,6 +28,8 @@ pytestmark = pytest.mark.integration
 
 WRITER_KEY = os.getenv("IDP_BRAIN_WEAVIATE_WRITER_KEY", "local-mvp52-writer-key")
 READER_KEY = os.getenv("IDP_BRAIN_WEAVIATE_READER_KEY", "local-mvp52-reader-key")
+CONFIG = load_weaviate_config(Path("config/weaviate.yaml"))
+COLLECTION_NAME = CONFIG.collection.name
 
 
 def test_fixture_round_trips_through_hybrid_client_and_read_only_mcp() -> None:
@@ -45,7 +50,8 @@ def test_fixture_round_trips_through_hybrid_client_and_read_only_mcp() -> None:
     ) as client:
         if client.collections.exists(COLLECTION_NAME):
             client.collections.delete(COLLECTION_NAME)
-        bootstrap_collection(client)
+        bootstrap_collection(client, CONFIG.collection)
+        bootstrap_collection(client, CONFIG.collection)
         upsert_evidence_chunk(client, chunk, citation, extractor_version="markdown-v1")
         configure_reader_role(client, reader_user="idp-brain-reader")
 
@@ -93,6 +99,33 @@ def test_fixture_round_trips_through_hybrid_client_and_read_only_mcp() -> None:
     assert chunk.chunk_key in serialized
     assert citation.citation_key in serialized
     assert "sk-test-ingestion-secret" not in serialized
+
+
+def test_bootstrap_rejects_vector_index_drift_without_replacing_generation() -> None:
+    with weaviate.connect_to_local(
+        port=CONFIG.endpoint.http_port,
+        grpc_port=CONFIG.endpoint.grpc_port,
+        auth_credentials=Auth.api_key(WRITER_KEY),
+    ) as client:
+        client.collections.delete(COLLECTION_NAME)
+        client.collections.create(
+            name=COLLECTION_NAME,
+            properties=_schema_properties(CONFIG.collection),
+            vector_config=Configure.Vectors.text2vec_transformers(
+                name="content",
+                source_properties=["content", "title", "headingPath"],
+                vectorize_collection_name=False,
+                vector_index_config=Configure.VectorIndex.hnsw(
+                    distance_metric=VectorDistances.DOT,
+                    quantizer=Configure.VectorIndex.Quantizer.none(),
+                ),
+            ),
+        )
+        with pytest.raises(
+            IncompatibleCollectionError, match="new collection generation"
+        ):
+            bootstrap_collection(client, CONFIG.collection)
+        assert client.collections.exists(COLLECTION_NAME)
 
 
 def _mcp_request(

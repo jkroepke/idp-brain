@@ -1,0 +1,26 @@
+---
+config_version: 1
+kind: weaviate
+endpoint:
+  http_host: 127.0.0.1
+  http_port: 58080
+  grpc_host: 127.0.0.1
+  grpc_port: 50051
+  mcp_path: /v1/mcp
+authentication:
+  writer_user: idp-brain-writer
+  writer_api_key_env: IDP_BRAIN_WEAVIATE_WRITER_KEY
+  reader_user: idp-brain-reader
+  reader_api_key_env: IDP_BRAIN_WEAVIATE_READER_KEY
+collection:
+  generation: Mvp1
+  vectorizer: text2vec-transformers
+  named_vectors:
+    - content
+  tokenization: word
+  vector_index_type: hnsw
+  vector_distance: cosine
+  vector_quantizer: none
+backup:
+  backend: filesystem
+  path: /var/lib/weaviate/backups

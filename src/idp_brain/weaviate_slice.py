@@ -6,20 +6,52 @@ import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from weaviate.classes.config import Configure, DataType, Property
+from weaviate.classes.config import (
+    Configure,
+    DataType,
+    Property,
+    Tokenization,
+    VectorDistances,
+)
 from weaviate.classes.query import MetadataQuery
 from weaviate.classes.rbac import Permissions
 
+from idp_brain.config.weaviate import WeaviateCollectionConfig
 from idp_brain.ingestion.chunking import SanitizedChunk, SanitizedCitation
 from idp_brain.ingestion.redaction_stage import SAFE_REDACTION_STATUSES
 
 if TYPE_CHECKING:
     from weaviate.client import WeaviateClient
 
-COLLECTION_NAME = "EvidenceChunk_Mvp52"
+COLLECTION_NAME = "EvidenceChunk_Mvp1"
 VECTOR_NAME = "content"
 READER_ROLE = "evidence-mvp52-reader"
 _UUID_NAMESPACE = uuid.UUID("92c967cf-cf26-5f36-b110-7aac6bbf6045")
+_TEXT_PROPERTY_NAMES = (
+    "chunkId",
+    "content",
+    "contentKind",
+    "title",
+    "headingPath",
+    "sourceId",
+    "sourceType",
+    "sourceUrl",
+    "sourceVersion",
+    "artifactPath",
+    "logicalLocator",
+    "symbolPath",
+    "signature",
+    "language",
+    "extractorVersion",
+    "chunkingProfile",
+    "contentHash",
+    "redactionStatus",
+    "citationId",
+)
+
+
+class IncompatibleCollectionError(RuntimeError):
+    """Raised when an existing generation does not match its declared schema."""
 
 
 @dataclass(frozen=True)
@@ -36,43 +68,80 @@ def evidence_uuid(chunk_key: str) -> uuid.UUID:
 
 
 def bootstrap_collection(
-    client: WeaviateClient, collection_name: str = COLLECTION_NAME
+    client: WeaviateClient,
+    collection: WeaviateCollectionConfig,
 ) -> None:
-    """Create the one versioned evidence collection when it does not exist."""
+    """Create or validate one immutable versioned evidence collection."""
 
-    if client.collections.exists(collection_name):
+    if client.collections.exists(collection.name):
+        _validate_collection(client, collection)
         return
     client.collections.create(
-        name=collection_name,
-        properties=[
-            Property(name="chunkId", data_type=DataType.TEXT),
-            Property(name="content", data_type=DataType.TEXT),
-            Property(name="contentKind", data_type=DataType.TEXT),
-            Property(name="title", data_type=DataType.TEXT),
-            Property(name="headingPath", data_type=DataType.TEXT),
-            Property(name="sourceId", data_type=DataType.TEXT),
-            Property(name="sourceType", data_type=DataType.TEXT),
-            Property(name="sourceUrl", data_type=DataType.TEXT),
-            Property(name="sourceVersion", data_type=DataType.TEXT),
-            Property(name="artifactPath", data_type=DataType.TEXT),
-            Property(name="logicalLocator", data_type=DataType.TEXT),
-            Property(name="symbolPath", data_type=DataType.TEXT),
-            Property(name="signature", data_type=DataType.TEXT),
-            Property(name="language", data_type=DataType.TEXT),
-            Property(name="lineStart", data_type=DataType.INT),
-            Property(name="lineEnd", data_type=DataType.INT),
-            Property(name="extractorVersion", data_type=DataType.TEXT),
-            Property(name="chunkingProfile", data_type=DataType.TEXT),
-            Property(name="contentHash", data_type=DataType.TEXT),
-            Property(name="redactionStatus", data_type=DataType.TEXT),
-            Property(name="citationId", data_type=DataType.TEXT),
-        ],
+        name=collection.name,
+        properties=_schema_properties(collection),
         vector_config=Configure.Vectors.text2vec_transformers(
             name=VECTOR_NAME,
             source_properties=["content", "title", "headingPath"],
             vectorize_collection_name=False,
+            vector_index_config=Configure.VectorIndex.hnsw(
+                distance_metric=VectorDistances(collection.vector_distance),
+                quantizer=Configure.VectorIndex.Quantizer.none(),
+            ),
         ),
     )
+
+
+def _schema_properties(
+    collection: WeaviateCollectionConfig,
+) -> list[Property]:
+    tokenization = Tokenization(collection.tokenization)
+    return [
+        *(
+            Property(name=name, data_type=DataType.TEXT, tokenization=tokenization)
+            for name in _TEXT_PROPERTY_NAMES
+        ),
+        Property(name="lineStart", data_type=DataType.INT),
+        Property(name="lineEnd", data_type=DataType.INT),
+    ]
+
+
+def _validate_collection(
+    client: WeaviateClient, collection: WeaviateCollectionConfig
+) -> None:
+    actual = client.collections.use(collection.name).config.get()
+    expected = {
+        name: ("text", collection.tokenization) for name in _TEXT_PROPERTY_NAMES
+    } | {"lineStart": ("int", None), "lineEnd": ("int", None)}
+    observed = {
+        prop.name: (
+            prop.data_type.value,
+            prop.tokenization.value if prop.tokenization else None,
+        )
+        for prop in actual.properties
+    }
+    vectors = set(actual.vector_config or {})
+    vector = (actual.vector_config or {}).get(VECTOR_NAME)
+    vectorizer_matches = (
+        vector is not None
+        and vector.vectorizer.vectorizer == collection.vectorizer
+        and vector.vectorizer.source_properties == ["content", "title", "headingPath"]
+    )
+    index = vector.vector_index_config if vector is not None else None
+    index_matches = (
+        index is not None
+        and index.__class__.__name__ == "_VectorIndexConfigHNSW"
+        and index.distance_metric.value == collection.vector_distance
+        and getattr(index, "quantizer", object()) is None
+    )
+    if (
+        observed != expected
+        or vectors != set(collection.named_vectors)
+        or not vectorizer_matches
+        or not index_matches
+    ):
+        raise IncompatibleCollectionError(
+            f"{collection.name} is incompatible; choose a new collection generation"
+        )
 
 
 def configure_reader_role(
