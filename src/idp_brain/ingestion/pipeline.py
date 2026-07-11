@@ -46,6 +46,12 @@ class IngestionRunResult:
     status: str
     dry_run: bool
     stats: dict[str, int]
+    requested_ref: str | None = None
+    extractor_profile: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    inactive_index_version: str | None = None
+    validation_only: bool = True
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -54,6 +60,12 @@ class IngestionRunResult:
             "status": self.status,
             "dry_run": self.dry_run,
             "stats": self.stats,
+            "version_ref": self.requested_ref,
+            "profile": self.extractor_profile,
+            "started_at": self.started_at,
+            "finished_at": self.finished_at,
+            "inactive_index_version": self.inactive_index_version,
+            "validation_only": self.validation_only,
         }
 
 
@@ -61,6 +73,9 @@ def run_ingestion(
     *,
     config_path: Path,
     source_id: str | None,
+    source_ids: tuple[str, ...] | None = None,
+    requested_version: str | None = None,
+    profile_override: str | None = None,
     dry_run: bool,
     operator_label: str | None = None,
     session_factory: sessionmaker[Session] | None = None,
@@ -69,7 +84,12 @@ def run_ingestion(
     """Record local ingestion runs for one source or all enabled sources."""
 
     config = load_sources_config(config_path)
-    selected_sources = _select_sources(config.sources, source_id)
+    requested_ids = source_ids or ((source_id,) if source_id is not None else ())
+    selected_sources = _select_sources(
+        config.sources,
+        requested_ids,
+        enforce_enabled=source_ids is not None,
+    )
     config_hash = hash_config_file(config_path)
     current_session_factory = session_factory or create_session_factory()
     results: list[IngestionRunResult] = []
@@ -77,11 +97,19 @@ def run_ingestion(
     with current_session_factory() as session:
         repository = IngestionRunRepository(session)
         for source in selected_sources:
+            if (
+                profile_override is not None
+                and profile_override != source.extractor_profile
+            ):
+                raise ValueError(
+                    f"profile {profile_override!r} is not configured for source "
+                    f"{source.source_id!r}"
+                )
             stats = empty_ingestion_counters()
             run = repository.create_started(
                 IngestionRunCreate(
                     config_source_id=source.source_id,
-                    requested_ref=select_requested_ref(source),
+                    requested_ref=requested_version or select_requested_ref(source),
                     config_file_hash=config_hash,
                     operator_label=operator_label,
                     extractor_profile=source.extractor_profile,
@@ -226,6 +254,12 @@ def run_ingestion(
                     status=run.status,
                     dry_run=dry_run,
                     stats=dict(run.stats),
+                    requested_ref=run.requested_ref,
+                    extractor_profile=run.extractor_profile,
+                    started_at=run.started_at.isoformat(),
+                    finished_at=run.completed_at.isoformat()
+                    if run.completed_at
+                    else None,
                 )
             )
 
@@ -257,13 +291,18 @@ def _fetch_source_snapshot(
 
 def _select_sources(
     sources: list[SourceConfig],
-    source_id: str | None,
+    source_ids: tuple[str, ...],
+    *,
+    enforce_enabled: bool = True,
 ) -> list[SourceConfig]:
-    if source_id is None:
+    if not source_ids:
         return [source for source in sources if source.enabled]
-
-    for source in sources:
-        if source.source_id == source_id:
-            return [source]
-
-    raise ValueError(f"unknown source ID: {source_id}")
+    by_id = {source.source_id: source for source in sources}
+    unknown = [source_id for source_id in source_ids if source_id not in by_id]
+    if unknown:
+        raise ValueError("requested source is unavailable")
+    if enforce_enabled and any(
+        not by_id[source_id].enabled for source_id in source_ids
+    ):
+        raise ValueError("requested source is unavailable")
+    return [by_id[source_id] for source_id in dict.fromkeys(source_ids)]
