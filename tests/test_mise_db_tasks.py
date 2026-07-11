@@ -19,6 +19,20 @@ def _mise_tasks() -> dict[str, object]:
     return tasks
 
 
+def _task_sequence(task: dict[str, object]) -> list[str]:
+    run = task["run"]
+    assert isinstance(run, list)
+
+    task_names: list[str] = []
+    for entry in run:
+        assert isinstance(entry, dict)
+        task_name = entry["task"]
+        assert isinstance(task_name, str)
+        task_names.append(task_name)
+
+    return task_names
+
+
 def test_database_tasks_are_discoverable() -> None:
     tasks = _mise_tasks()
 
@@ -33,23 +47,38 @@ def test_database_check_is_part_of_ci() -> None:
     tasks = _mise_tasks()
     ci_task = tasks["ci"]
     assert isinstance(ci_task, dict)
-    ci_run = ci_task["run"]
-    assert isinstance(ci_run, str)
 
-    assert "mise run db:migrate" in ci_run
-    assert "mise run db:check" in ci_run
+    ci_sequence = _task_sequence(ci_task)
+    assert ci_sequence == [
+        "up",
+        "db:migrate",
+        "db:check",
+        "test:ingestion:integration",
+        "test:integration",
+    ]
+    assert ci_task["depends_post"] == ["down"]
 
 
 def test_reset_task_requires_confirmation_and_local_target() -> None:
     tasks = _mise_tasks()
     reset_task = tasks["db:reset"]
     assert isinstance(reset_task, dict)
-    reset_run = reset_task["run"]
-    assert isinstance(reset_run, str)
 
-    assert "idp-brain db assert-local-reset-target" in reset_run
-    assert "docker compose down --volumes --remove-orphans" in reset_run
-    assert "uv run alembic upgrade head" in reset_run
+    assert _task_sequence(reset_task) == [
+        "db:reset:assert-local",
+        "db:reset:remove",
+        "up",
+        "db:migrate",
+        "db:check",
+    ]
+
+    assert_task = tasks["db:reset:assert-local"]
+    assert isinstance(assert_task, dict)
+    assert assert_task["run"] == "uv run idp-brain db assert-local-reset-target"
+
+    remove_task = tasks["db:reset:remove"]
+    assert isinstance(remove_task, dict)
+    assert remove_task["run"] == "docker compose down --volumes --remove-orphans"
 
 
 def test_local_reset_database_url_accepts_only_disposable_default() -> None:
