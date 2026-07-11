@@ -237,6 +237,7 @@ class VectorCandidateRetriever:
                 Chunk.structure_path,
                 Chunk.symbol_path,
                 Chunk.signature_text,
+                Chunk.sanitized_text,
                 Chunk.language,
                 Chunk.artifact_role,
                 Chunk.chunk_kind,
@@ -401,6 +402,8 @@ class VectorCandidateRetriever:
                 "index_version_id": row["index_version_id"],
                 "retrieval_strategy": retrieval_strategy,
             },
+            sanitized_excerpt=row["sanitized_text"],
+            sanitized_excerpt_trusted=True,
         )
 
 

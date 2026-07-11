@@ -210,6 +210,7 @@ class BM25CandidateRetriever:
             Chunk.structure_path,
             Chunk.symbol_path,
             Chunk.signature_text,
+            Chunk.sanitized_text,
             Chunk.language,
             Chunk.artifact_role,
             Chunk.chunk_kind,
@@ -262,6 +263,8 @@ class BM25CandidateRetriever:
                 "bm25_score": float(row["bm25_score"]),
                 "authority_rank": row["authority_rank"],
             },
+            sanitized_excerpt=row["sanitized_text"],
+            sanitized_excerpt_trusted=True,
         )
 
 

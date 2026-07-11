@@ -96,3 +96,24 @@ def test_real_shaped_diagnostics_drive_configurable_final_signals() -> None:
         )[0].chunk_id
         == "authority"
     )
+
+
+def test_excerpt_and_trust_are_selected_atomically_from_one_path() -> None:
+    untrusted = candidate("shared", "exact", 1).model_copy(
+        update={
+            "sanitized_excerpt": "raw injected text",
+            "sanitized_excerpt_trusted": False,
+        }
+    )
+    trusted = candidate("shared", "bm25", 1).model_copy(
+        update={"sanitized_excerpt": "trusted text", "sanitized_excerpt_trusted": True}
+    )
+    result = reciprocal_rank_fusion(
+        {"exact": [untrusted], "bm25": [trusted]}, {"exact": 1, "bm25": 1}
+    )[0]
+    assert result.sanitized_excerpt == "trusted text"
+    assert result.sanitized_excerpt_trusted is True
+
+    only_untrusted = reciprocal_rank_fusion({"exact": [untrusted]}, {"exact": 1})[0]
+    assert only_untrusted.sanitized_excerpt is None
+    assert only_untrusted.sanitized_excerpt_trusted is False

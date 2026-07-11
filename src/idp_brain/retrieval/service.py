@@ -7,6 +7,11 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from idp_brain.config.retrieval import RetrievalQueryProfileConfig
+from idp_brain.reranking.providers import (
+    RerankerRegistry,
+    RerankerUnavailableError,
+    rerank_fused_candidates,
+)
 from idp_brain.retrieval.fusion import reciprocal_rank_fusion
 from idp_brain.retrieval.models import (
     Candidate,
@@ -53,6 +58,7 @@ class HybridRetrievalService:
         relationship_expander: RelationshipExpander | None = None,
         reranker: Callable[[Sequence[FusedCandidate], int], Sequence[FusedCandidate]]
         | None = None,
+        reranker_registry: RerankerRegistry | None = None,
         rank_constant: int | None = None,
     ) -> None:
         self._exact = exact_retriever
@@ -60,6 +66,7 @@ class HybridRetrievalService:
         self._vector = vector_retriever
         self._relationships = relationship_expander
         self._reranker = reranker
+        self._reranker_registry = reranker_registry
         self._rank_constant = rank_constant
 
     def retrieve(
@@ -93,8 +100,24 @@ class HybridRetrievalService:
             freshness_enabled=profile.config.freshness_weighting.enabled,
         )[: profile.fused_limit]
         ranked: Sequence[FusedCandidate] = fused
-        if self._reranker is not None and profile.config.reranker_profile_id:
+        reranker_profile_id = profile.config.reranker_profile_id
+        if self._reranker_registry is not None and reranker_profile_id:
+            reranker_profile = self._reranker_registry.profile(reranker_profile_id)
+            try:
+                ranked = rerank_fused_candidates(
+                    query_text=query.query_text,
+                    candidates=fused,
+                    profile_id=reranker_profile_id,
+                    registry=self._reranker_registry,
+                    candidate_limit=profile.rerank_limit,
+                )
+            except RerankerUnavailableError:
+                if reranker_profile is None or not reranker_profile.allow_fallback:
+                    raise
+        elif self._reranker is not None and reranker_profile_id:
             ranked = self._reranker(fused, profile.rerank_limit)
+        elif reranker_profile_id:
+            raise RerankerUnavailableError("required reranker is unavailable")
         return HybridRetrievalResult(
             candidate_lists={key: tuple(value) for key, value in paths.items()},
             fused=tuple(fused),

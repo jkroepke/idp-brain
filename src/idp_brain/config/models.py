@@ -214,6 +214,55 @@ class EmbeddingProfileConfig(ConfigModel):
         return self.model_name
 
 
+class RerankerProfileConfig(ConfigModel):
+    """Safe runtime settings for one reranking provider."""
+
+    profile_id: str = Field(min_length=1)
+    provider_id: str = Field(min_length=1)
+    model_name: str = Field(min_length=1)
+    enabled: bool = True
+    external: bool = False
+    deterministic: bool = False
+    candidate_limit: int = Field(default=50, gt=0, le=200)
+    timeout_seconds: float = Field(default=10, gt=0)
+    max_text_length: int = Field(default=4096, gt=0)
+    required_env_vars: list[str] = Field(default_factory=list)
+    allow_fallback: bool = False
+    required: bool = True
+    options: dict[str, ScalarValue] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_keys(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        value = dict(data)
+        value["profile_id"] = value.pop("model_id", value.get("profile_id"))
+        value["provider_id"] = value.pop("provider", value.get("provider_id"))
+        value["model_name"] = value.pop("provider_model_id", value.get("model_name"))
+        token_limit = value.pop("token_limit", None)
+        value.pop("dimensions", None)
+        if token_limit and "max_text_length" not in value:
+            value["max_text_length"] = token_limit
+        return value
+
+    @property
+    def model_id(self) -> str:
+        return self.profile_id
+
+    @property
+    def provider(self) -> str:
+        """Compatibility alias for existing generic model-profile callers."""
+
+        return self.provider_id
+
+    @property
+    def provider_model_id(self) -> str:
+        """Compatibility alias for existing generic model-profile callers."""
+
+        return self.model_name
+
+
 class ProviderRouteConfig(ConfigModel):
     """Provider routing for one model purpose."""
 
@@ -239,7 +288,7 @@ class ModelsConfig(ConfigModel):
     config_version: Literal[1]
     kind: Literal["models"]
     embedding_profiles: list[EmbeddingProfileConfig]
-    reranker_profiles: list[ModelProfileConfig]
+    reranker_profiles: list[RerankerProfileConfig]
     generator_profiles: list[ModelProfileConfig] = Field(default_factory=list)
     provider_routes: list[ProviderRouteConfig] = Field(default_factory=list)
     budgets: ModelBudgetsConfig

@@ -48,6 +48,8 @@ def reciprocal_rank_fusion(
             fused_score=score,
             path_candidates=paths[chunk_id],
             metadata=metadata[chunk_id],
+            sanitized_excerpt=_trusted_excerpt(paths[chunk_id]),
+            sanitized_excerpt_trusted=_trusted_excerpt(paths[chunk_id]) is not None,
         )
         for chunk_id, score in scores.items()
     ]
@@ -58,6 +60,17 @@ def reciprocal_rank_fusion(
             authority_enabled=authority_enabled,
             freshness_enabled=freshness_enabled,
         ),
+    )
+
+
+def _trusted_excerpt(path_candidates: Mapping[str, Candidate]) -> str | None:
+    return next(
+        (
+            item.sanitized_excerpt
+            for item in path_candidates.values()
+            if item.sanitized_excerpt_trusted and item.sanitized_excerpt is not None
+        ),
+        None,
     )
 
 
