@@ -1,4 +1,4 @@
-min_version = "2024.9.5"
+min_version = "2026.2.18"
 
 [tools]
 act = "latest"
@@ -23,12 +23,44 @@ run = "uv sync"
 
 [tasks.lint]
 description = "Run formatting, linting, and type checks"
+depends = [
+  "lint:ruff-format",
+  "lint:ruff",
+  "lint:types",
+  "lint:actions",
+  "lint:workflows",
+  "lint:yaml",
+]
+
+[tasks."lint:ruff-format"]
+description = "Check Python formatting with Ruff"
+wait_for = ["install"]
+run = "uv run ruff format --check ."
+
+[tasks."lint:ruff"]
+description = "Lint Python code with Ruff"
+wait_for = ["install"]
+run = "uv run ruff check ."
+
+[tasks."lint:types"]
+description = "Run Python type checks"
+wait_for = ["install"]
+run = "uv run ty check"
+
+[tasks."lint:actions"]
+description = "Lint GitHub Actions workflows"
+wait_for = ["install"]
+run = "actionlint"
+
+[tasks."lint:workflows"]
+description = "Scan GitHub Actions workflows with zizmor"
+wait_for = ["install"]
+run = "zizmor --fix=safe .github/workflows/*"
+
+[tasks."lint:yaml"]
+description = "Lint tracked and untracked YAML files"
+wait_for = ["install"]
 run = '''
-uv run ruff format --check .
-uv run ruff check .
-uv run ty check
-actionlint
-zizmor --fix=safe .github/workflows/*
 yaml_files=$(git ls-files --cached --others --exclude-standard '*.yaml' '*.yml')
 if [ -n "$yaml_files" ]; then
   printf '%s\n' "$yaml_files" | xargs uvx yamllint
@@ -37,58 +69,38 @@ fi
 
 [tasks.test]
 description = "Run the test suite"
-run = '''
-uv run pytest -m 'not integration' --ignore=tests/ingestion
-mise run test:ingestion:unit
-'''
+depends = ["test:unit", "test:ingestion:unit"]
+
+[tasks."test:unit"]
+description = "Run unit tests outside the ingestion suite"
+wait_for = ["install"]
+run = "uv run pytest -m 'not integration' --ignore=tests/ingestion"
 
 [tasks."test:ingestion:unit"]
 description = "Run Phase 3 ingestion tests that do not require Postgres"
+wait_for = ["install"]
 run = "uv run pytest -m 'not integration' tests/ingestion"
 
 [tasks."test:ingestion"]
 description = "Run the full Phase 3 ingestion regression suite, including migrated Postgres flows"
-run = '''
-uv run pytest -m 'not integration' tests/ingestion
-uv run pytest -m integration tests/ingestion
-'''
+depends = ["test:ingestion:unit", "test:ingestion:integration"]
+
+[tasks."test:ingestion:integration"]
+description = "Run database-backed Phase 3 ingestion tests"
+wait_for = ["install"]
+run = "uv run pytest -m integration tests/ingestion"
 
 [tasks.ci]
 description = "Run the complete local validation path"
-run = '''
-#!/usr/bin/env sh
-set -eu
-
-postgres_started=0
-
-cleanup() {
-  status=$?
-  trap - EXIT INT TERM
-  set +e
-
-  if [ "$postgres_started" -eq 1 ]; then
-    mise run down
-    down_status=$?
-    if [ "$status" -eq 0 ]; then
-      exit "$down_status"
-    fi
-  fi
-
-  exit "$status"
-}
-
-trap cleanup EXIT INT TERM
-
-mise run install
-mise run lint
-mise run test
-postgres_started=1
-mise run up
-mise run db:migrate
-mise run db:check
-mise run test:ingestion
-mise run test:integration
-'''
+depends = ["install", "lint", "test"]
+depends_post = ["down"]
+run = [
+  { task = "up" },
+  { task = "db:migrate" },
+  { task = "db:check" },
+  { task = "test:ingestion:integration" },
+  { task = "test:integration" },
+]
 
 [tasks.up]
 description = "Start the local runtime"
@@ -116,6 +128,7 @@ run = "uv run idp-brain db check"
 
 [tasks."test:integration"]
 description = "Run database-backed integration tests"
+wait_for = ["install"]
 run = '''
 uv run pytest -m integration \
   tests/integration \
@@ -132,16 +145,21 @@ uv run pytest -m integration \
 
 [tasks."db:reset"]
 description = "Reset the disposable local Docker Compose database"
-run = '''
-#!/usr/bin/env sh
-set -eu
+run = [
+  { task = "db:reset:assert-local" },
+  { task = "db:reset:remove" },
+  { task = "up" },
+  { task = "db:migrate" },
+  { task = "db:check" },
+]
 
-uv run idp-brain db assert-local-reset-target
-docker compose down --volumes --remove-orphans
-docker compose up --build --wait --wait-timeout 120 postgres
-uv run alembic upgrade head
-uv run idp-brain db check
-'''
+[tasks."db:reset:assert-local"]
+hide = true
+run = "uv run idp-brain db assert-local-reset-target"
+
+[tasks."db:reset:remove"]
+hide = true
+run = "docker compose down --volumes --remove-orphans"
 
 [tasks.ingest]
 description = "Run safe validation-only ingestion"
@@ -153,7 +171,7 @@ cleanup() {
   status=$?
   trap - EXIT INT TERM
   if [ "$postgres_started" -eq 1 ]; then
-    mise run down || true
+    docker compose down || true
   fi
   exit "$status"
 }
@@ -167,7 +185,7 @@ if [ -z "$(docker compose ps --status running -q postgres)" ]; then
   fi
 fi
 echo 'Applying database migrations...'
-mise run db:migrate
+uv run alembic upgrade head
 echo 'Recording validation-only dry-run ingestion...'
 uv run idp-brain ingest run --validation-only --dry-run
 '''
