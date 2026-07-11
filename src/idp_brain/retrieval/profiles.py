@@ -32,6 +32,7 @@ class ResolvedQueryProfile:
     vector_profile: VectorRetrievalProfile
     fused_limit: int
     rerank_limit: int
+    rank_constant: int
 
 
 class QueryProfileCatalog:
@@ -41,6 +42,7 @@ class QueryProfileCatalog:
         self._profiles = {
             profile.profile_id: profile for profile in config.query_profiles
         }
+        self._rank_constant = config.rank_constant
 
     def get(self, profile_id: QueryProfileId) -> RetrievalQueryProfileConfig:
         """Return one configured query profile."""
@@ -68,6 +70,7 @@ class QueryProfileCatalog:
             ),
             fused_limit=profile.candidate_counts.fused_top_k,
             rerank_limit=profile.candidate_counts.rerank_top_k,
+            rank_constant=self._rank_constant,
         )
 
 
