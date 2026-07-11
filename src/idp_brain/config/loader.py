@@ -133,6 +133,14 @@ def _load_typed_config[TConfig: ConfigModel](
         ) from exc
 
 
+def load_typed_config[TConfig: ConfigModel](
+    path: Path, model_type: type[TConfig]
+) -> TConfig:
+    """Load one independently typed configuration document."""
+
+    return _load_typed_config(path, model_type)
+
+
 def _load_yaml_mapping(path: Path) -> dict[str, object]:
     try:
         raw_text = path.read_text(encoding="utf-8")

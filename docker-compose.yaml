@@ -21,7 +21,8 @@ services:
       AUTHORIZATION_RBAC_ROOT_USERS: idp-brain-writer
       CLUSTER_HOSTNAME: idp-brain-weaviate
       DEFAULT_VECTORIZER_MODULE: text2vec-transformers
-      ENABLE_MODULES: text2vec-transformers
+      ENABLE_MODULES: text2vec-transformers,backup-filesystem
+      BACKUP_FILESYSTEM_PATH: /var/lib/weaviate/backups
       MCP_SERVER_ENABLED: "true"
       MCP_SERVER_WRITE_ACCESS_ENABLED: "false"
       PERSISTENCE_DATA_PATH: /var/lib/weaviate

@@ -110,6 +110,17 @@ run = "docker compose up --build --wait --wait-timeout 120 postgres weaviate"
 description = "Stop the local runtime"
 run = "docker compose down"
 
+[tasks."weaviate:bootstrap"]
+description = "Start local Weaviate and idempotently bootstrap its collection"
+run = [
+  "docker compose up --wait --wait-timeout 120 weaviate",
+  "uv run python -m idp_brain.weaviate_admin",
+]
+
+[tasks."weaviate:reset"]
+description = "Reset only the disposable local Weaviate volume and bootstrap it"
+run = "uv run python -m idp_brain.weaviate_reset"
+
 [tasks."db:migrate"]
 description = "Apply database migrations"
 run = "uv run alembic upgrade head"
