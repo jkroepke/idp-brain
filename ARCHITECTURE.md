@@ -26,6 +26,33 @@ This change is an **architecture reset**, not a production data migration:
 
 A short-lived vertical slice may run beside the old stack only long enough to validate Weaviate before the old code is deleted.
 
+## Explicitly Retired Requirements
+
+The following former requirements are **not required for the MVP** and must not be inferred from the existing codebase, Phase 4 tests, public classes, DTOs, or older plans:
+
+- derive trusted corpus eligibility at query time
+- apply mandatory application-side source, visibility, sensitivity, license, version, active-state, or index-generation filters to every request
+- perform application-owned deterministic exact retrieval
+- apply application-owned authority or freshness score adjustments
+- produce separate stable citation objects through a citation repository or assembly pipeline
+- assemble an application-owned evidence bundle
+- provide custom MCP `fetch`, `explain_search`, or `list_sources` tools
+
+The replacement rules are:
+
+- classify, sanitize, and route evidence during ingestion; use Weaviate RBAC, collections, tenants, and credentials for caller boundaries
+- use authorized collections or tenants instead of hidden mandatory application filters
+- use versioned blue-green collections instead of active-state and index-generation query filters
+- use one direct Weaviate hybrid query instead of exact/BM25/vector orchestration and RRF
+- use Weaviate ranking without application authority or freshness adjustment
+- store stable citation metadata directly on each `EvidenceChunk`; a separate citation entity or DTO graph is unnecessary
+- return ranked sanitized Weaviate objects with citation properties instead of an evidence bundle
+- use Weaviate's built-in MCP hybrid tool; defer exact fetch and search explanation until measured usage proves they are needed
+
+These capabilities may be reconsidered only after a concrete requirement cannot be met safely or efficiently by Weaviate-native authorization, collection design, returned object properties, and direct retrieval. They are not compatibility obligations.
+
+The normative implementation detail is defined in `plans/mvp/05-cli-mcp-evaluation-operations/00-weaviate-reset-rules.md`.
+
 ## Preserve And Replace Boundary
 
 ### Preserve
@@ -374,5 +401,5 @@ The reset is complete when:
 - the built-in read-only Weaviate MCP server returns evidence and citation properties
 - evaluation passes without comparing legacy scores
 - no runtime dependency on PostgreSQL, ParadeDB, pgvector, SQLAlchemy, Alembic, or psycopg remains
-- application-owned RRF, default reranking, evidence-bundle assembly, and MCP server code are removed
+- application-owned query-time eligibility derivation, mandatory hidden filters, exact retrieval, authority/freshness adjustments, separate citation assembly, evidence-bundle assembly, and custom MCP tools are removed
 - no migration export, dual-write, compatibility, or PostgreSQL rollback path remains
