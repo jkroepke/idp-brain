@@ -1,57 +1,62 @@
 # MVP Implementation Plan
 
-This README is the operating guide for the `idp-brain` MVP plan. Follow the
-steps in order and treat every step file as an implementation contract.
+This README is the operating guide for the `idp-brain` MVP.
+
+## Current State
+
+Phases 1 through 4 and Step 5.1 were implemented with PostgreSQL, ParadeDB, pgvector, SQLAlchemy, application-owned retrieval fusion, and a planned custom MCP server.
+
+The target architecture changed before the MVP was released. The project does not need to preserve a production database. Searchable state is reproducible from configured sources.
+
+Starting with Step 5.2, the plan performs a destructive Weaviate architecture reset:
+
+- preserve source acquisition, extraction, redaction, chunking, deterministic identity, CLI structure, and reusable evaluation fixtures
+- replace the complete persistence and retrieval back half
+- use one versioned Weaviate `EvidenceChunk` collection
+- use direct Weaviate hybrid search
+- use Weaviate's built-in read-only MCP server
+- rebuild from sources rather than migrate PostgreSQL rows
+- remove the legacy database and retrieval stack after the vertical slice passes
 
 ## MVP Goal
 
-Build a local-first Python 3.14 retrieval pipeline that ingests configured
-technical sources, persists only sanitized evidence, indexes it with PostgreSQL
-18, ParadeDB `pg_search`, and pgvector, and exposes citation-backed retrieval
-through CLI and read-only MCP tools.
-
-The MVP is complete when ingestion, exact/BM25/vector retrieval, evidence
-bundles, MCP tools, evaluation, CI, the local observability operations stack,
-OpenTelemetry contrib instrumentation, collector-native PostgreSQL metrics,
-OpenTelemetry-correlated continuous profiling, database backup and restore, and
-Python 3.14 free-threaded validation work.
+Build a local-first Python 3.14 pipeline that ingests configured technical sources, persists only sanitized evidence in Weaviate, and exposes that evidence through a thin CLI and Weaviate's built-in read-only MCP server.
 
 ## Execution Rules
 
 - Complete steps in order.
 - Keep one focused commit per step.
 - Run every listed test and check.
-- Do not persist, embed, log, or return raw unsanitized chunks.
-- Apply source, license, sensitivity, redaction, version, and active-index
-  filters before every retrieval subquery.
-- Keep CI deterministic and independent from paid or private external services.
-- Treat caller-provided MCP context only as a hint. Trusted corpus eligibility
-  is derived server-side.
-- Do not invent version lineage or citations.
+- Never persist, vectorize, log, trace, profile, or return raw unsanitized source content.
+- Do not add new features to the PostgreSQL implementation.
+- Do not build a PostgreSQL export, dual-write, compatibility, or rollback framework.
+- Rebuild Weaviate from configured sources.
+- Prefer Weaviate-native features over new application abstractions.
+- Do not recreate the former relational schema as many Weaviate collections.
+- Do not implement an application-owned MCP server unless a measured requirement cannot be met by Weaviate MCP, RBAC, tenants, collection design, and returned properties.
+- Keep CI deterministic and independent from paid external providers.
+- Read Step 5.0 before implementation. It is normative and overrides requirements implied by the existing codebase, Phase 4 behavior, older plan files, and legacy tests.
+
+## Explicitly Removed MVP Requirements
+
+An implementation agent must not port these legacy capabilities merely because matching code already exists:
+
+- query-time trusted corpus eligibility derivation
+- mandatory application-side source, visibility, sensitivity, license, version, active-state, or index-generation filtering
+- application-owned deterministic exact retrieval
+- application-owned authority or freshness score adjustments
+- separate citation-object assembly
+- evidence-bundle assembly
+- custom MCP `fetch`, `explain_search`, or `list_sources` tools
+
+Step 5.0 defines the Weaviate-native replacement for each item and the only conditions under which it may be reconsidered.
 
 ## Phase Overview
 
-Phase 1 establishes the Python project, task runner, local PostgreSQL runtime,
-migrations, extension checks, and CI baseline.
-
-Phase 2 defines configuration, corpus policy, redaction, licensing, indexing,
-and relational data models.
-
-Phase 3 implements source ingestion, extraction, redaction-before-persistence,
-structure-aware chunking, incremental updates, and tombstones.
-
-Phase 4 implements embeddings, ParadeDB BM25, pgvector, exact lookup, corpus
-filtering, fusion, reranking, evidence bundles, and retrieval tests.
-
-Phase 5 exposes the system through CLI and read-only MCP tools and adds retrieval
-evaluation, thresholds, and deterministic GitHub Actions evaluation.
-
-Phase 6 contains day-2 operations: the complete local observability stack,
-OpenTelemetry metrics, logs and traces, Python contrib instrumentation for
-logging, exceptions, SQLAlchemy, psycopg2, threading and urllib3,
-collector-native PostgreSQL metrics, OpenTelemetry-correlated continuous
-profiling, database backup and restore, and a final Python 3.14 free-threaded
-integration test with the global interpreter lock disabled.
+- **Phases 1–4:** implemented legacy baseline; retained only as code to reuse or delete.
+- **Step 5.1:** implemented ingest CLI surface.
+- **Steps 5.2–5.9:** Weaviate architecture reset.
+- **Phase 6:** Day-2 operations and OpenTelemetry.
 
 ## Phase 1: Skeleton And Local Runtime
 
@@ -91,7 +96,9 @@ integration test with the global interpreter lock disabled.
 - [3.9 Incremental Ingestion And Tombstones](03-ingestion-and-sanitized-storage/09-incremental-ingestion-and-tombstones.md)
 - [3.10 Ingestion Test Suite](03-ingestion-and-sanitized-storage/10-ingestion-test-suite.md)
 
-## Phase 4: Embeddings, BM25, pgvector, And Retrieval
+## Phase 4: Legacy Retrieval Baseline
+
+This phase is already implemented. Its PostgreSQL, ParadeDB, pgvector, RRF, reranker, and evidence-bundle code is removed during Step 5.8 rather than ported.
 
 - [Phase directory](04-embeddings-bm25-pgvector-retrieval/)
 - [4.1 Embedding Provider Interface](04-embeddings-bm25-pgvector-retrieval/01-embedding-provider-interface.md)
@@ -108,39 +115,27 @@ integration test with the global interpreter lock disabled.
 - [4.12 Evidence Bundle Contract](04-embeddings-bm25-pgvector-retrieval/12-evidence-bundle-contract.md)
 - [4.13 Retrieval Test Suite](04-embeddings-bm25-pgvector-retrieval/13-retrieval-test-suite.md)
 
-## Phase 5: CLI, MCP, Evaluation, And CI
+## Phase 5: Weaviate Architecture Reset
 
 - [Phase directory](05-cli-mcp-evaluation-operations/)
+- [5.0 Normative Weaviate Reset Rules](05-cli-mcp-evaluation-operations/00-weaviate-reset-rules.md)
 - [5.1 Ingest CLI Commands](05-cli-mcp-evaluation-operations/01-ingest-cli-commands.md)
-- [5.2 Retrieve Query Command](05-cli-mcp-evaluation-operations/02-retrieve-query-command.md)
-- [5.3 Retrieve Explain Command](05-cli-mcp-evaluation-operations/03-retrieve-explain-command.md)
-- [5.4 MCP Stdio Server](05-cli-mcp-evaluation-operations/04-mcp-stdio-server.md)
-- [5.5 MCP Search Tool](05-cli-mcp-evaluation-operations/05-mcp-search-tool.md)
-- [5.6 MCP Fetch Tool](05-cli-mcp-evaluation-operations/06-mcp-fetch-tool.md)
-- [5.7 MCP Explain And List Sources](05-cli-mcp-evaluation-operations/07-mcp-explain-and-list-sources.md)
-- [5.8 Eval Run Command](05-cli-mcp-evaluation-operations/08-eval-run-command.md)
-- [5.9 Evaluation Metrics](05-cli-mcp-evaluation-operations/09-evaluation-metrics.md)
-- [5.10 Evaluation Thresholds And CI Gates](05-cli-mcp-evaluation-operations/10-evaluation-thresholds-and-ci-gates.md)
-- [5.13 GitHub Actions Eval](05-cli-mcp-evaluation-operations/13-github-actions-eval.md)
+- [5.2 Weaviate Vertical Slice](05-cli-mcp-evaluation-operations/02-weaviate-vertical-slice.md)
+- [5.3 Weaviate Runtime And Collection](05-cli-mcp-evaluation-operations/03-weaviate-runtime-and-collection.md)
+- [5.4 Replace Ingestion Persistence](05-cli-mcp-evaluation-operations/04-weaviate-ingestion-store.md)
+- [5.5 Direct Weaviate Retrieval CLI](05-cli-mcp-evaluation-operations/05-weaviate-retrieval-cli.md)
+- [5.6 Built-In Weaviate MCP Server](05-cli-mcp-evaluation-operations/06-weaviate-built-in-mcp.md)
+- [5.7 Adapt Evaluation To Weaviate](05-cli-mcp-evaluation-operations/07-weaviate-evaluation.md)
+- [5.8 Remove The Legacy Stack](05-cli-mcp-evaluation-operations/08-remove-legacy-stack.md)
+- [5.9 Clean-Checkout Completion Gate](05-cli-mcp-evaluation-operations/09-clean-checkout-completion-gate.md)
 
 ## Phase 6: Day-2 Operations And OpenTelemetry
 
-Application metrics, logs, and traces use OpenTelemetry APIs and OTLP.
-Prometheus receives metrics through its native OTLP receiver. Grafana Alloy's
-collector-native PostgreSQL receiver supplies database metrics through the same
-metrics pipeline. Python contrib instrumentation covers logging, uncaught
-exceptions, SQLAlchemy-managed database access, direct psycopg2 connections,
-thread context propagation, and urllib3 client calls. Continuous Python profiles
-are linked to OpenTelemetry root spans with `pyroscope-otel` and routed through
-Grafana Alloy's Pyroscope-compatible receiver to Pyroscope. The application does
-not expose a metrics scrape endpoint and does not use backend-specific metrics
-instrumentation.
-
 - [Phase directory](06-day-2-operations/)
-- [6.1 OpenTelemetry Backend Stack](06-day-2-operations/01-otel-backend-stack.md)
-- [6.2 OpenTelemetry Metrics](06-day-2-operations/02-otel-metrics.md)
+- [6.1 Observability Backend Stack](06-day-2-operations/01-otel-backend-stack.md)
+- [6.2 OpenTelemetry Metrics And Weaviate Monitoring](06-day-2-operations/02-otel-metrics.md)
 - [6.3 OpenTelemetry Logging](06-day-2-operations/03-otel-logging.md)
 - [6.4 OpenTelemetry Traces](06-day-2-operations/04-otel-traces.md)
-- [6.5 Docker Compose Database Backup](06-day-2-operations/05-database-backup.md)
+- [6.5 Weaviate Backup And Restore](06-day-2-operations/05-weaviate-backup.md)
 - [6.6 OpenTelemetry Span Profiling](06-day-2-operations/06-otel-profiling.md)
 - [6.7 Python 3.14 Free-Threaded Integration Test](06-day-2-operations/07-free-threaded-integration-test.md)
