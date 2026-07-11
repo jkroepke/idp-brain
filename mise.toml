@@ -144,11 +144,32 @@ uv run idp-brain db check
 '''
 
 [tasks.ingest]
-description = "Run ingestion"
+description = "Run safe validation-only ingestion"
 run = '''
 #!/usr/bin/env sh
-echo 'Task ingest is implemented in Phase 3.' >&2
-exit 1
+set -eu
+postgres_started=0
+cleanup() {
+  status=$?
+  trap - EXIT INT TERM
+  if [ "$postgres_started" -eq 1 ]; then
+    mise run down || true
+  fi
+  exit "$status"
+}
+trap cleanup EXIT INT TERM
+if [ -z "$(docker compose ps --status running -q postgres)" ]; then
+  postgres_started=1
+  echo 'Starting local PostgreSQL for validation-only ingestion (110s timeout)...'
+  if ! timeout 110s docker compose up --build --wait --wait-timeout 100 postgres; then
+    echo 'Local PostgreSQL startup timed out or failed.' >&2
+    exit 1
+  fi
+fi
+echo 'Applying database migrations...'
+mise run db:migrate
+echo 'Recording validation-only dry-run ingestion...'
+uv run idp-brain ingest run --validation-only --dry-run
 '''
 
 [tasks.retrieve]
