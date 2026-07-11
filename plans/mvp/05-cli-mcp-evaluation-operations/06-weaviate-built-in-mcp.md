@@ -6,6 +6,22 @@ Use Weaviate's built-in MCP server as the default agent interface and avoid an a
 
 Documentation: https://docs.weaviate.io/weaviate/configuration/mcp-server
 
+Step 5.0 is normative. Existing custom MCP plans and code do not define required compatibility behavior.
+
+## Explicit Non-Requirements
+
+The MVP MCP interface does not require:
+
+- server-side trusted corpus eligibility derivation
+- hidden application-side source, visibility, sensitivity, license, version, active-state, or index-generation filters
+- an application-owned exact lookup path
+- authority or freshness post-processing
+- separate citation objects
+- evidence-bundle assembly
+- custom `fetch`, `explain_search`, or `list_sources` tools
+
+Citation metadata is returned as properties of each `EvidenceChunk`. Authorization and evidence separation use Weaviate RBAC, collections, tenants, and read-only credentials.
+
 ## Instructions
 
 1. Enable the MCP server on `/v1/mcp`.
@@ -21,17 +37,19 @@ Documentation: https://docs.weaviate.io/weaviate/configuration/mcp-server
    - custom MCP authentication
    - custom `search`, `fetch`, `explain_search`, or `list_sources` tools
    - duplicate MCP transport telemetry
+   - a compatibility wrapper around the former evidence-bundle response
 10. Use separate collections or tenants when different callers need different evidence.
 
 ## Checks
 
 - built-in MCP hybrid search returns the expected fixture
-- citation properties are present
+- citation properties are present on the returned evidence object
 - write tools are unavailable
 - unauthorized collections or tenants are inaccessible
 - no custom Python MCP server is started
+- no custom exact, fetch, explain, citation-assembly, or evidence-bundle path is invoked
 - `mise run ci`
 
 ## Acceptance Criteria
 
-Agents can query the intended evidence through Weaviate MCP with read-only authorization and no application-owned MCP server.
+Agents can query the intended evidence through Weaviate MCP with read-only authorization and no application-owned MCP server. Missing legacy custom tools or response contracts are not considered regressions.
