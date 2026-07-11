@@ -132,10 +132,11 @@ class FusionWeightsConfig(RetrievalConfigModel):
     bm25: float = Field(default=1.0, ge=0, le=1)
     vector: float = Field(default=1.0, ge=0, le=1)
     relationship: float = Field(default=0.5, ge=0, le=1)
+    memory: float = Field(default=0.0, ge=0, le=1)
 
     @model_validator(mode="after")
     def at_least_one_weight_is_positive(self) -> Self:
-        if self.exact + self.bm25 + self.vector + self.relationship <= 0:
+        if self.exact + self.bm25 + self.vector + self.relationship + self.memory <= 0:
             raise ValueError("at least one fusion weight must be greater than zero")
         return self
 
@@ -324,6 +325,7 @@ class RetrievalConfig(RetrievalConfigModel):
 
     config_version: Literal[1]
     kind: Literal["retrieval"]
+    rank_constant: int = Field(default=60, gt=0)
     query_profiles: list[RetrievalQueryProfileConfig]
 
     @model_validator(mode="after")

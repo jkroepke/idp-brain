@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from idp_brain.retrieval_field_sets import BM25_RETRIEVAL_FIELDS
 
-RetrievalPath = Literal["exact", "fuzzy", "bm25", "vector"]
+RetrievalPath = Literal["exact", "fuzzy", "bm25", "vector", "relationship", "memory"]
 DEFAULT_RETRIEVAL_SENSITIVITY_CLASSES = ("public",)
 DEFAULT_RETRIEVAL_LICENSE_POLICY_STATUSES = ("allowed",)
 DEFAULT_RETRIEVAL_CORPUS_ELIGIBILITY_LABELS = (
@@ -117,3 +117,18 @@ class Candidate(BaseModel):
     matched_fields: tuple[str, ...]
     metadata: dict[str, Any]
     diagnostics: dict[str, Any] = Field(default_factory=dict)
+
+
+class FusedCandidate(BaseModel):
+    """Deduplicated candidate with path-local diagnostics and an RRF score."""
+
+    model_config = ConfigDict(frozen=True)
+
+    chunk_id: str
+    fused_score: float
+    path_candidates: dict[str, Candidate]
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def retrieval_paths(self) -> tuple[str, ...]:
+        return tuple(sorted(self.path_candidates))
