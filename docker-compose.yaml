@@ -7,7 +7,7 @@
 # Extension creation remains migration-managed in Phase 1.6.
 services:
   weaviate:
-    image: cr.weaviate.io/semitechnologies/weaviate:1.38.1
+    image: cr.weaviate.io/semitechnologies/weaviate:1.38.5
     ports:
       - "127.0.0.1:${IDP_BRAIN_WEAVIATE_HTTP_PORT:-58080}:8080"
       - "127.0.0.1:${IDP_BRAIN_WEAVIATE_GRPC_PORT:-50051}:50051"
