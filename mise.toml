@@ -4,7 +4,7 @@ min_version = "2026.2.18"
 act = "latest"
 actionlint = "latest"
 prek = "latest"
-python = { version = "3.14.6", virtualenv = ".venv" }
+python = { version = "3.14.7", virtualenv = ".venv" }
 ty = "latest"
 uv = "0.11.32"
 zizmor = "latest"
