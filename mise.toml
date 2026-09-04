@@ -6,7 +6,7 @@ actionlint = "latest"
 prek = "latest"
 python = { version = "3.14.7", virtualenv = ".venv" }
 ty = "latest"
-uv = "0.12.7"
+uv = "0.12.9"
 zizmor = "latest"
 
 [settings]
