@@ -14,16 +14,21 @@ jobs:
   sign:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out openai branch
-        uses: actions/checkout@v4
-        with:
-          ref: openai
-          fetch-depth: 0
-
-      - name: Generate ephemeral GPG signing key
+      - name: Generate key, sign commit, and push
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+
+          AUTH="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+
+          git init repo
+          cd repo
+          git remote add origin "https://github.com/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH"
+          git fetch --depth=1 origin openai
+          git checkout -B openai FETCH_HEAD
 
           cat > /tmp/gpg-key.conf <<'EOF'
           %no-protection
@@ -53,6 +58,3 @@ jobs:
           git add .openai-signing-test/actions-gpg-fingerprint.txt .openai-signing-test/actions-gpg-public-key.asc
           git commit -S -m "test: commit signed with ephemeral GPG key"
           git push origin HEAD:openai
-
-          echo "fingerprint=$FPR" >> "$GITHUB_OUTPUT"
-        id: signing
