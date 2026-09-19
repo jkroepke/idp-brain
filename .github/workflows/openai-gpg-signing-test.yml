@@ -1,0 +1,58 @@
+name: OpenAI GPG signing experiment
+
+on:
+  push:
+    branches:
+      - openai
+    paths:
+      - .github/workflows/openai-gpg-signing-test.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out openai branch
+        uses: actions/checkout@v4
+        with:
+          ref: openai
+          fetch-depth: 0
+
+      - name: Generate ephemeral GPG signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/gpg-key.conf <<'EOF'
+          %no-protection
+          Key-Type: RSA
+          Key-Length: 3072
+          Key-Usage: sign
+          Name-Real: OpenAI GPG Signing Test
+          Name-Email: mail@jkroepke.de
+          Expire-Date: 1d
+          %commit
+          EOF
+
+          gpg --batch --generate-key /tmp/gpg-key.conf
+
+          FPR="$(gpg --batch --list-secret-keys --with-colons mail@jkroepke.de | awk -F: '/^fpr:/ {print $10; exit}')"
+          test -n "$FPR"
+
+          mkdir -p .openai-signing-test
+          printf '%s\n' "$FPR" > .openai-signing-test/actions-gpg-fingerprint.txt
+          gpg --batch --armor --export "$FPR" > .openai-signing-test/actions-gpg-public-key.asc
+
+          git config user.name "Jan-Otto Kröpke"
+          git config user.email "mail@jkroepke.de"
+          git config user.signingkey "$FPR"
+          git config commit.gpgsign true
+
+          git add .openai-signing-test/actions-gpg-fingerprint.txt .openai-signing-test/actions-gpg-public-key.asc
+          git commit -S -m "test: commit signed with ephemeral GPG key"
+          git push origin HEAD:openai
+
+          echo "fingerprint=$FPR" >> "$GITHUB_OUTPUT"
+        id: signing
